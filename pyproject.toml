@@ -1,0 +1,91 @@
+[project]
+name = "flare-ai-social"
+version = "0.1.0"
+description = "Flare AI Kit template for Social AI Agents"
+readme = "README.md"
+authors = [
+    { name = "Dinesh Pinto", email = "annual.fallout_0z@icloud.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "cryptography>=44.0.1",
+    "fastapi>=0.115.8",
+    "google-generativeai>=0.8.4",
+    "httpx>=0.28.1",
+    "pydantic-settings>=2.7.1",
+    "pyjwt>=2.10.1",
+    "pyopenssl>=25.0.0",
+    "requests>=2.32.3",
+    "structlog>=25.1.0",
+    "tweepy>=4.15.0",
+    "uvicorn>=0.34.0",
+    "aiohttp>=3.9.0",
+    "python-dotenv>=1.0.0",
+    "python-telegram-bot>=20.7",
+    "pandas>=2.2.3",
+    "seaborn>=0.13.2",
+]
+
+[project.scripts]
+start-compare = "flare_ai_social.compare:start"
+start-tuning = "flare_ai_social.tune_model:start"
+start-backend = "flare_ai_social.main:start"
+start-twitter = "flare_ai_social.twitter:start"
+start-telegram = "flare_ai_social.telegram:start"
+start-bots = "flare_ai_social.bot_manager:start_bot_manager"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.394",
+    "pytest>=8.3.4",
+    "ruff>=0.9.6",
+]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["D203", "D212", "COM812", "D", "S105", "ANN401", "T201", "ISC003"]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"tests/**/*.py" = ["S101", "ARG"]
+"src/flare_ai_social/prompts/templates.py" = ["E501"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.pyright]
+pythonVersion = "3.12"
+strictListInference = true
+strictDictionaryInference = true
+strictSetInference = true
+deprecateTypingAliases = true
+disableBytesTypePromotions = true
+reportUnusedClass = true
+reportUnusedFunction = true
+reportUntypedFunctionDecorator = true
+reportUntypedClassDecorator = true
+reportPrivateUsage = true
+reportPrivateImportUsage = false
+reportTypeCommentUsage = true
+reportConstantRedefinition = true
+reportDeprecated = true
+reportInconsistentConstructor = true
+reportUninitializedInstanceVariable = true
+reportMissingParameterType = true
+reportCallInDefaultInitializer = true
+reportUnnecessaryIsInstance = true
+reportUnnecessaryCast = true
+reportUnnecessaryComparison = true
+reportUnnecessaryContains = true
+reportInvalidStubStatement = true
+reportUnusedExpression = true
+reportUnnecessaryTypeIgnoreComment = true
+reportMatchNotExhaustive = true
+reportImplicitOverride = true
+reportShadowedImports = true
