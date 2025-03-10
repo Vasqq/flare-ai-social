@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     twitter_polling_interval: int = 60
 
     # Telegram Bot settings
-    enable_telegram: bool = True  # Enable Telegram bot
+    enable_telegram: bool = False  # Enable Telegram bot
     telegram_api_token: str = ""  # Required for Telegram bot
     telegram_allowed_users: str = (
         ""  # Comma-separated list of allowed user IDs (optional)
