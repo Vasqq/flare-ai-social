@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import Any
 
 import aiohttp
+import ssl
+import certifi
 import structlog
 
 from flare_ai_social.ai import BaseAIProvider
@@ -177,6 +179,8 @@ class TwitterBot:
         """Post a new tweet using Twitter API v2 with retry logic"""
         url = f"{self.twitter_api_base}/tweets"
         payload = {"text": text}
+        # Create an SSL context using certifi's CA bundle.
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
 
         try:
             headers = self._get_twitter_api_headers("POST", url)
@@ -189,6 +193,7 @@ class TwitterBot:
                     headers=headers,
                     json=payload,
                     timeout=timeout,
+                    ssl=ssl_context
                 ) as response,
             ):
                 if response.status in [HTTP_OK, 201]:
