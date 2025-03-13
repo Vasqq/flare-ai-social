@@ -71,7 +71,7 @@ class BotManager:
         logger.info("Using default Gemini Flash model with few-shot prompting")
         self.ai_provider = GeminiProvider(
             settings.gemini_api_key,
-            model_name="gemini-1.5-flash",
+            model_name="gemini-2.0-flash",
             system_instruction=ZERO_SHOT_PROMPT,
         )
 
