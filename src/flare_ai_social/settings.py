@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     def accounts_to_monitor(self) -> list[str]:
         """Parse the comma-separated list of Twitter accounts to monitor."""
         if not self.twitter_accounts_to_monitor:
-            return ["@privychatxyz"]
+            return ["@ScribeChainFLR"]
         return [
             account.strip() for account in self.twitter_accounts_to_monitor.split(",")
         ]
