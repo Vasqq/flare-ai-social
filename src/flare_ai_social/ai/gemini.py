@@ -9,6 +9,7 @@ and message management while maintaining a consistent AI personality.
 from typing import TYPE_CHECKING, Any, override
 
 import google.generativeai as genai
+import google.generativeai.files as files
 import structlog
 
 from flare_ai_social.ai.base import BaseAIProvider, ModelResponse
@@ -108,6 +109,45 @@ class GeminiProvider(BaseAIProvider):
                 "prompt_feedback": response.prompt_feedback,
             },
         )
+    @override
+    def generate_multimodal_content(
+        self,
+        prompt: str,
+        audio_file_ref: Any,
+        response_mime_type: str | None = None,
+        response_schema: Any | None = None,
+    ) -> ModelResponse:
+        """
+        Generate content using the Gemini model with multimodal input.
+        This method accepts a text prompt and an audio file reference.
+        and passes both to the model for processing.
+        
+        Args:
+            prompt (str): The text prompt.
+            audio_file_ref (Any): The audio file reference returned from upload_audio_file.
+            response_mime_type (str | None): Expected MIME type for the response.
+            response_schema (Any | None): Schema for the expected response structure.
+        
+        Returns:
+            ModelResponse: The generated summary and metadata.
+        """
+        # Combine the prompt and the audio file reference into a list of contents.
+        contents = [prompt, audio_file_ref]
+        response = self.model.generate_content(
+            contents,
+            generation_config=genai.GenerationConfig(
+                response_mime_type=response_mime_type,
+                response_schema=response_schema,
+            ),
+        )
+        return ModelResponse(
+            text=response.text,
+            raw_response=response,
+            metadata={
+                "candidate_count": len(response.candidates),
+                "prompt_feedback": response.prompt_feedback,
+            },
+        )
 
     @override
     def send_message(
@@ -142,3 +182,21 @@ class GeminiProvider(BaseAIProvider):
                 "prompt_feedback": response.prompt_feedback,
             },
         )
+    
+    @override
+    def upload_audio_file(self, 
+                          file_path: str
+                          ) -> Any:
+        """
+        Upload an audio file using Google’s Generative AI file service.
+        
+        Args:
+            file_path (str): The path to the audio file.
+        
+        Returns:
+            A file reference.
+        """
+        file_ref = files.upload_file(file_path, mime_type="audio/mp4")
+        self.logger.info("Uploaded audio file", file_ref=file_ref)
+        return file_ref
+
