@@ -649,10 +649,11 @@ class TwitterBot:
         assert self.cookie_path is not None, "Cookie path must be provided"
 
         logger.info("Beginning X space download")
+        logger.info(f"PATH: {os.environ['PATH']}")
         cmd = [
-            "twspace_dl",
-            "-i", space_url,
-            "-c", self.cookie_path,
+            "/bin/sh",
+            "-c",
+            f"/app/.venv/bin/twspace_dl -i {space_url} -c {self.cookie_path}",
         ]
         try:
             process = await asyncio.create_subprocess_exec(
