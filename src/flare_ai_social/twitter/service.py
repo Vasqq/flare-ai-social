@@ -469,6 +469,38 @@ class TwitterBot:
             new_mentions.append(tweet)
 
         return new_mentions
+    
+    async def get_parent_tweet_text(self, tweet_id: Any) -> None:
+        async with aiohttp.ClientSession() as session:
+                tweet_details = await self.fetch_tweet_details(tweet_id, session)
+                logger.info(f"Fetched tweet tweet raw response: {tweet_details}")
+                if tweet_details and "includes" in tweet_details:
+                    includes = tweet_details["includes"]
+                    logger.info(f"Fetched tweet includes: {includes}")
+                    tweets_array = includes.get("tweets", [])
+                    if tweets_array:
+                        parent_tweet_text = tweets_array[0].get("text", "")
+                        logger.info(f"Fetched parent tweet text: {parent_tweet_text}")
+                        return parent_tweet_text
+                    else:
+                        logger.warning("No tweets found in includes.")
+                else:
+                    logger.info(f"Failed to fetch tweet details for tweet: {tweet_id}")
+        return None
+    
+    async def get_replied_tweet_id(self, tweet_id: Any) -> None:
+        async with aiohttp.ClientSession() as session:
+                tweet_details = await self.fetch_tweet_details(tweet_id, session)
+                if tweet_details and "data" in tweet_details:
+                    data = tweet_details["data"]
+                    referenced = data.get("referenced_tweets", [])
+                    for ref in referenced:
+                        if ref.get("type") == "replied_to":
+                            replied_to_id = ref.get("id")
+                            logger.info(f"Found replied-to tweet ID: {replied_to_id}")
+                            return replied_to_id
+                logger.info(f"Failed to extract replied-to tweet ID for tweet: {tweet_id}")
+        return None
 
     async def handle_mention(self, tweet: dict[str, Any]) -> None:
         """Handle a mention by generating AI response and replying to it"""
