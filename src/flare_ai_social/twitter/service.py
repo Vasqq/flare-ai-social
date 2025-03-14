@@ -70,6 +70,9 @@ class TwitterBot:
         self.accounts_to_monitor = config.accounts_to_monitor or ["@ScribeChainFLR"]
         self.polling_interval = config.polling_interval
 
+        # Rate limit reset time tracker for X Api V2 free tier
+        self.rate_limit_reset_time: float | None = None
+
         # API endpoints
         self.twitter_api_base = "https://api.twitter.com/2"
         self.rapidapi_search_endpoint = f"https://{self.rapidapi_host}/search-v2"
