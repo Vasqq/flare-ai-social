@@ -105,6 +105,7 @@ class BotManager:
             ai_provider = self._check_ai_provider_initialized()
 
             config = TwitterConfig(
+                cookie_path=settings.cookie_path,
                 bearer_token=settings.x_bearer_token,
                 api_key=settings.x_api_key,
                 api_secret=settings.x_api_key_secret,
