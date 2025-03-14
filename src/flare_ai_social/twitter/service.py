@@ -159,8 +159,18 @@ class TwitterBot:
     def _get_twitter_api_headers(
         self, method: str, url: str, params: dict[str, Any] | None = None
     ) -> dict[str, str]:
-        """Generate headers for Twitter API v2 requests with OAuth 1.0a"""
-        # Ensure all header values are strings.
+        if method.upper() == "POST":
+            # Force OAuth 1.0a for POST endpoints
+            return {
+                "Authorization": self._get_oauth1_auth(method, url, params),
+                "Content-Type": "application/json",
+            }
+        if self.bearer_token:
+        # For GET endpoints
+            return {
+                "Authorization": f"Bearer {self.bearer_token}",
+                "Content-Type": "application/json",
+            }
         return {
             "Authorization": self._get_oauth1_auth(method, url, params),
             "Content-Type": "application/json",
