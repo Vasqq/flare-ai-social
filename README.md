@@ -190,8 +190,8 @@ Deploy on [Confidential Space](https://cloud.google.com/confidential-computing/c
    Update your `.env` file with:
 
    ```bash
-   TEE_IMAGE_REFERENCE=ghcr.io/YOUR_REPO_IMAGE:main  # Replace with your repo build image
-   INSTANCE_NAME=<PROJECT_NAME-TEAM_NAME>
+   TEE_IMAGE_REFERENCE=TEE_IMAGE_REFERENCE=ghcr.io/vasqq/flare-ai-social:main
+   INSTANCE_NAME=ScribeChainFLR
    ```
 
 2. **Load Environment Variables:**
