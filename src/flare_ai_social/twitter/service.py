@@ -9,8 +9,10 @@ import aiohttp
 import ssl
 import certifi
 import structlog
+import glob
 
 from flare_ai_social.ai import BaseAIProvider
+from flare_ai_social.twitter import utils
 
 logger = structlog.get_logger(__name__)
 
@@ -27,6 +29,7 @@ FALLBACK_REPLY = "We're experiencing some difficulties."
 class TwitterConfig:
     """Configuration for Twitter API credentials and settings"""
 
+    cookie_path: str | None = None
     bearer_token: str | None = None
     api_key: str | None = None
     api_secret: str | None = None
@@ -46,6 +49,12 @@ class TwitterBot:
     ) -> None:
         self.ai_provider = ai_provider
 
+        # Twitter Bot Cookie path
+        self.cookie_path = config.cookie_path
+
+        # Conversation context linking a tweet ID to an audio file of an X space
+        self.conversation_context = {}
+
         # Twitter API credentials
         self.bearer_token = config.bearer_token
         self.api_key = config.api_key
@@ -59,7 +68,7 @@ class TwitterBot:
 
         # Check if required credentials are provided
         if not all(
-            [self.api_key, self.api_secret, self.access_token, self.access_secret]
+            [self.cookie_path, self.api_key, self.api_secret, self.access_token, self.access_secret]
         ):
             raise ValueError(ERR_TWITTER_CREDENTIALS)
 
