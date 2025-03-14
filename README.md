@@ -30,7 +30,7 @@ ScribeChain isn't just a clever idea; it's built on cutting-edge technology:
 
 * **Gemini 2.0 Multimodal Input:** Powers the intelligent audio processing and summarization.
 * **Trusted Execution Environments:** ScribeChain runs within a secure TEE on Google Cloud's Confidential Space. This ensures that your data and the AI's processing remain private and protected. TEEs create an isolated environment where code and data are shielded from unauthorized access, making them ideal for sensitive applications like AI agents.
-* **Flare Integration:** ScribeChain is connected to Flare's TEEverifier contract, adding an extra layer of trust and transparency. This integration allows for on-chain verification of the AI's operations, making it a truly trustworthy social AI agent.
+* **Flare Integration (to be integrated):** ScribeChain is connected to Flare's TEEverifier contract, adding an extra layer of trust and transparency. This integration allows for on-chain verification of the AI's operations, making it a truly trustworthy social AI agent.
 
 ## The Main Loop Explained
 
