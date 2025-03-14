@@ -503,30 +503,64 @@ class TwitterBot:
         return None
 
     async def handle_mention(self, tweet: dict[str, Any]) -> None:
-        """Handle a mention by generating AI response and replying to it"""
+        # 1) Get the tweet ID where ScribeChain was mentioned
         tweet_id = tweet.get("id_str", "")
-        username = "user"
-        for mention in tweet.get("entities", {}).get("user_mentions", []):
-            if mention.get("id_str") == tweet.get("user_id_str"):
-                username = mention.get("screen_name", "user")
-                break
 
-        text = tweet.get("full_text", "")
+        if self.rate_limit_reset_time and time.time() < self.rate_limit_reset_time:
+            logger.warning(f"Rate limit in effect, skipping processing for tweet: {tweet_id}")
+            return
 
-        try:
-            clean_text = text
-            for mention in tweet.get("entities", {}).get("user_mentions", []):
-                mention_text = f"@{mention.get('screen_name', '')}"
-                clean_text = clean_text.replace(mention_text, "").strip()
+        # 2) Check if the tweet contains the trigger word "summarize"
+        if "summarize" in tweet.get("full_text", "").lower():
+            logger.info(f"Trigger detected in tweet: {tweet_id}")
 
-            ai_response = self.ai_provider.generate_content(clean_text)
-            response_text = ai_response.text
+            # 3) Get the text containing the link to the X space from the parent tweet
+            parent_tweet_text = await self.get_parent_tweet_text(tweet_id)
+            if parent_tweet_text is None:
+                logger.error(f"Parent tweet text is None for tweet: {tweet_id}")
+                return
 
-            max_chars = 280
-            if len(response_text) > max_chars:
-                response_text = response_text[: max_chars - 3] + "..."
+            # 4) Extract and resolve the X Space URL from the parent tweet text.
+            space_url = await utils.extract_link_from_text(parent_tweet_text)
+            if space_url:
+                logger.info(f"Extracted X Space URL: {space_url}")
+                # 5) Pass the resolved space URL to download the space audio.
+                await self.download_space_audio(space_url)
+            else:
+                logger.warning(f"No X Space URL found in parent tweet: {tweet_id}")
 
-            await self.post_reply(response_text, tweet_id)
+            # 4) Locate the downloaded .m4a file in the current directory
+            m4a_file_path =  glob.glob("*.m4a")[0]
+
+            if not m4a_file_path:
+                logger.error("No .m4a file found after donwloading space audio")
+                return
+            logger.info(f"Using audio file: {m4a_file_path}")
+
+            # 5) Read the audio file data
+            audio_file_ref = self.ai_provider.upload_audio_file(m4a_file_path)
+        
+            # # 5) Feed the audio data to Gemini
+            summary_response = self.ai_provider.generate_multimodal_content(
+                prompt="You will tell me what this audio clip is about",
+                audio_file_ref=audio_file_ref
+            )
+
+         # 6) Log and post the summary (if available)
+            if summary_response and summary_response.text:
+                logger.info("Gemini Summary: %s", summary_response.text)
+                summary_tweet_id = await self.post_reply(summary_response.text, tweet_id)
+                logger.debug(f"Summary tweet ID: {summary_tweet_id}")
+                # Save context for follow-ups
+                self.conversation_context[summary_tweet_id] = {
+                    "summary": summary_response.text,
+                    "audio_ref": audio_file_ref,  # or transcript if you extract it
+                }
+            else:
+                logger.error("No summary returned from Gemini.")
+        else:
+            # If it’s a reply (follow-up), handle it in a separate method.
+            await self.handle_followup(tweet)
         except Exception:
             logger.exception("Error generating AI response")
             fallback_reply = f"@{username} {FALLBACK_REPLY}"
