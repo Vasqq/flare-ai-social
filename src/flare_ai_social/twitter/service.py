@@ -67,7 +67,7 @@ class TwitterBot:
             raise ValueError(ERR_RAPIDAPI_KEY)
 
         # Monitoring parameters
-        self.accounts_to_monitor = config.accounts_to_monitor or ["@privychatxyz"]
+        self.accounts_to_monitor = config.accounts_to_monitor or ["@ScribeChainFLR"]
         self.polling_interval = config.polling_interval
 
         # API endpoints

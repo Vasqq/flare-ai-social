@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     rapidapi_host: str = "twitter241.p.rapidapi.com"
 
     # Twitter accounts to monitor (comma-separated list with @ symbols)
-    twitter_accounts_to_monitor: str = "@FlareNetworks"
+    twitter_accounts_to_monitor: str = "@ScribeChainFLR"
 
     # Twitter monitoring interval in seconds
     twitter_polling_interval: int = 60
