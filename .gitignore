@@ -12,5 +12,8 @@ wheels/
 .ruff_cache
 .vscode
 .DS_Store
+
+# Application generated files
 *.png
 cookies.txt
+*.m4a
