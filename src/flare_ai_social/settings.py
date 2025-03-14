@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 import structlog
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -12,11 +13,11 @@ class Settings(BaseSettings):
     """
 
     # API key for accessing Google's Gemini AI service
-    gemini_api_key: str = ""
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "default_key")
     # Name of the new tuned model
     tuned_model_name: str = ""
     # Base model to tune upon
-    tuning_source_model: str = "models/gemini-1.5-flash-001-tuning"
+    tuning_source_model: str = "models/gemini-2.0-flash-001-tuning"
     # Tuning dataset path
     tuning_dataset_path: Path = (
         Path(__file__).parent.parent / "data" / "training_data.json"
@@ -30,16 +31,22 @@ class Settings(BaseSettings):
 
     # Twitter Bot settings
     enable_twitter: bool = True  # Enable Twitter bot
+    cookie_path: str = os.getenv("COOKIE_PATH", "./cookies.txt")
     # X/Twitter API credentials (all required for the TwitterBot to function)
-    x_bearer_token: str = ""
-    x_api_key: str = ""  # Required: Twitter API consumer key
-    x_api_key_secret: str = ""  # Required: Twitter API consumer secret
-    x_access_token: str = ""  # Required: Twitter API access token
-    x_access_token_secret: str = ""  # Required: Twitter API access token secret
+    x_bearer_token: str = os.getenv("X_BEARER_TOKEN", "")
+    # Required: Twitter API consumer key
+    x_api_key: str = os.getenv("X_API_KEY", "")
+    # Required: Twitter API consumer secret
+    x_api_key_secret: str = os.getenv("X_API_KEY_SECRET", "")
+    # Required: Twitter API access token
+    x_access_token: str = os.getenv("X_ACCESS_TOKEN", "")
+    # Required: Twitter API access token secret
+    x_access_token_secret: str = os.getenv("X_ACCESS_TOKEN_SECRET", "")
 
     # RapidAPI configuration for X/Twitter search (required for the TwitterBot)
-    rapidapi_key: str = ""
-    rapidapi_host: str = "twitter241.p.rapidapi.com"
+    rapidapi_key: str = os.getenv("RAPIDAPI_KEY", "")
+    # rapidapi_host: str = "twitter241.p.rapidapi.com"
+    rapidapi_host: str = os.getenv("RAPIDAPI_HOST", "twitter241.p.rapidapi.com")
 
     # Twitter accounts to monitor (comma-separated list with @ symbols)
     twitter_accounts_to_monitor: str = "@ScribeChainFLR"
