@@ -561,7 +561,64 @@ class TwitterBot:
         else:
             # If it’s a reply (follow-up), handle it in a separate method.
             await self.handle_followup(tweet)
+    
+    async def handle_followup(self, tweet: dict[str, Any]) -> None:
+        tweet_id = tweet.get("id_str", "")
+        in_reply_to_id = await self.get_replied_tweet_id(tweet_id)
+   
+        if not in_reply_to_id:
+            logger.debug(f"Tweet {tweet_id} is not a reply to summary tweet; resuming mention check cycle.")
+            return
+
+        logger.debug(f"Tweet {tweet_id} replied to {in_reply_to_id}.")
+        context = self.conversation_context.get(in_reply_to_id)
+        if not context:
+            logger.warning(f"No conversation context/symmary tweet found for reply tweet: {tweet_id}")
+            return
+
+        # Build a follow-up prompt that includes the context (e.g., summary and/or audio reference)
+        followup_question = tweet.get("full_text", "")
+        prompt = (
+            "You are ScribeChain, an AI social agent for Flare on X/Twitter. "
+            "Below is the audio file reference from an X Space. "
+            "Your task is to answer the following follow-up question strictly based on the content of that audio file. "
+            "Do not reference any other context or generate off-topic responses.\n\n"
+            f"Audio Reference: {context['audio_ref']}\n\n"
+            f"Follow-up question: {followup_question}"
+        )
+        logger.info(f"Sending follow-up prompt: {prompt}")
+
+        # Use send_message to generate a follow-up answer (assuming multi-turn chat is supported)
+        response = self.ai_provider.send_message(prompt)
+        if response and response.text:
+            logger.info(f"Follow-up response: {response.text}")
+            await self.post_reply(response.text, tweet_id)
+        else:
+            logger.error("No response returned for follow-up question.")
+
+
+    async def fetch_tweet_details(self, tweet_id: str, session: aiohttp.ClientSession) -> dict[str, Any] | None:
+        # Only request the referenced_tweets field
+        fields = "referenced_tweets"
+        url = f"{self.twitter_api_base}/tweets/{tweet_id}?tweet.fields={fields}&expansions=referenced_tweets.id"
+        headers = self._get_twitter_api_headers("GET", url)
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        try:
+            async with session.get(url, headers=headers, ssl=ssl_context) as response:
+                if response.status == HTTP_OK:
+                    return await response.json()
+                elif response.status == HTTP_RATE_LIMIT:
+                    retry_after = response.headers.get("retry-after")
+                    wait_time = int(retry_after) if retry_after else 900  # default to 15 minutes
+                    self.rate_limit_reset_time = time.time() + wait_time
+                    logger.warning(f"Rate limit exceeded when fetching tweet details for tweet: {tweet_id}. Waiting for {wait_time} seconds.")
+                    return None
+                else:
+                    logger.error("Failed to fetch tweet details", status=response.status)
+                    return None
         except Exception:
+            logger.exception("Error fetching tweet details")
+            return None
 
     async def download_space_audio(self, space_url: str) -> None:
         """Download the audio from a completed X Space given its URL asynchronously."""
