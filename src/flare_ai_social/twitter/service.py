@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import aiohttp
+import os
 import ssl
 import certifi
 import structlog
