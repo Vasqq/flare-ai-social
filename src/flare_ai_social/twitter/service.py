@@ -562,9 +562,31 @@ class TwitterBot:
             # If it’s a reply (follow-up), handle it in a separate method.
             await self.handle_followup(tweet)
         except Exception:
-            logger.exception("Error generating AI response")
-            fallback_reply = f"@{username} {FALLBACK_REPLY}"
-            await self.post_reply(fallback_reply, tweet_id)
+
+    async def download_space_audio(self, space_url: str) -> None:
+        """Download the audio from a completed X Space given its URL asynchronously."""
+
+        assert self.cookie_path is not None, "Cookie path must be provided"
+
+        logger.info("Beginning X space download")
+        cmd = [
+            "twspace_dl",
+            "-i", space_url,
+            "-c", self.cookie_path,
+        ]
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await process.communicate()
+            if process.returncode == 0:
+                logger.info("Space audio downloaded successfully: %s", stdout.decode())
+            else:
+                logger.error("Error downloading space audio: %s", stderr.decode())
+        except Exception as e:
+            logger.exception("Exception while downloading space audio: %s", str(e))
 
     async def monitor_mentions(self) -> None:
         """Main method to monitor mentions for all accounts"""
