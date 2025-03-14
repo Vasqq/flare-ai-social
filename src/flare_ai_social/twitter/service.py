@@ -259,7 +259,7 @@ class TwitterBot:
 
         try:
             headers = self._get_twitter_api_headers("POST", url)
-
+            ssl_context = ssl.create_default_context(cafile=certifi.where())
             async with (
                 aiohttp.ClientSession() as session,
                 session.post(
@@ -267,6 +267,7 @@ class TwitterBot:
                     headers=headers,
                     json=payload,
                     timeout=aiohttp.ClientTimeout(total=30),
+                    ssl=ssl_context
                 ) as response,
             ):
                 if response.status in [HTTP_OK, 201]:
@@ -334,12 +335,13 @@ class TwitterBot:
     ) -> list[dict[str, Any]]:
         """Search Twitter using new RapidAPI endpoint with a recent time filter"""
         params = {"query": keyword, "count": "20", "type": "Latest"}
-
         try:
+            ssl_context = ssl.create_default_context(cafile=certifi.where())
             async with session.get(
                 self.rapidapi_search_endpoint,
                 headers=self._get_rapidapi_headers(),
                 params=params,
+                ssl=ssl_context  
             ) as response:
                 if response.status == HTTP_OK:
                     result = await response.json()
