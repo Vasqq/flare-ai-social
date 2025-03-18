@@ -109,6 +109,7 @@ class GeminiProvider(BaseAIProvider):
                 "prompt_feedback": response.prompt_feedback,
             },
         )
+
     @override
     def generate_multimodal_content(
         self,
@@ -121,13 +122,13 @@ class GeminiProvider(BaseAIProvider):
         Generate content using the Gemini model with multimodal input.
         This method accepts a text prompt and an audio file reference.
         and passes both to the model for processing.
-        
+
         Args:
             prompt (str): The text prompt.
             audio_file_ref (Any): The audio file reference returned from upload_audio_file.
             response_mime_type (str | None): Expected MIME type for the response.
             response_schema (Any | None): Schema for the expected response structure.
-        
+
         Returns:
             ModelResponse: The generated summary and metadata.
         """
@@ -182,21 +183,18 @@ class GeminiProvider(BaseAIProvider):
                 "prompt_feedback": response.prompt_feedback,
             },
         )
-    
+
     @override
-    def upload_audio_file(self, 
-                          file_path: str
-                          ) -> Any:
+    def upload_audio_file(self, file_path: str) -> Any:
         """
         Upload an audio file using Google’s Generative AI file service.
-        
+
         Args:
             file_path (str): The path to the audio file.
-        
+
         Returns:
             A file reference.
         """
         file_ref = files.upload_file(file_path, mime_type="audio/mp4")
         self.logger.info("Uploaded audio file", file_ref=file_ref)
         return file_ref
-

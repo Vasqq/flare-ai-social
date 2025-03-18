@@ -16,6 +16,7 @@ def resolve_tco_url_sync(tco_url: str) -> str:
     response = requests.get(tco_url, allow_redirects=True, verify=certifi.where())
     return response.url
 
+
 async def resolve_tco_url_async(tco_url: str) -> str | None:
     """
     Asynchronously resolves a t.co URL by running the synchronous resolution in a thread.
@@ -28,13 +29,14 @@ async def resolve_tco_url_async(tco_url: str) -> str | None:
         logger.exception(f"Error resolving t.co URL: {tco_url}: {e}")
         return None
 
+
 async def extract_link_from_text(text: str) -> str | None:
     """
     Extracts a t.co URL from the given text and returns the resolved final URL.
-    
+
     Args:
         text (str): The text to search.
-        
+
     Returns:
         Optional[str]: The resolved URL or None if no t.co URL is found.
     """

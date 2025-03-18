@@ -69,7 +69,13 @@ class TwitterBot:
 
         # Check if required credentials are provided
         if not all(
-            [self.cookie_path, self.api_key, self.api_secret, self.access_token, self.access_secret]
+            [
+                self.cookie_path,
+                self.api_key,
+                self.api_secret,
+                self.access_token,
+                self.access_secret,
+            ]
         ):
             raise ValueError(ERR_TWITTER_CREDENTIALS)
 
@@ -179,7 +185,7 @@ class TwitterBot:
                 "Content-Type": "application/json",
             }
         if self.bearer_token:
-        # For GET endpoints
+            # For GET endpoints
             return {
                 "Authorization": f"Bearer {self.bearer_token}",
                 "Content-Type": "application/json",
@@ -212,11 +218,7 @@ class TwitterBot:
             async with (
                 aiohttp.ClientSession() as session,
                 session.post(
-                    url,
-                    headers=headers,
-                    json=payload,
-                    timeout=timeout,
-                    ssl=ssl_context
+                    url, headers=headers, json=payload, timeout=timeout, ssl=ssl_context
                 ) as response,
             ):
                 if response.status in [HTTP_OK, 201]:
@@ -290,7 +292,7 @@ class TwitterBot:
                     headers=headers,
                     json=payload,
                     timeout=aiohttp.ClientTimeout(total=30),
-                    ssl=ssl_context
+                    ssl=ssl_context,
                 ) as response,
             ):
                 if response.status in [HTTP_OK, 201]:
@@ -364,7 +366,7 @@ class TwitterBot:
                 self.rapidapi_search_endpoint,
                 headers=self._get_rapidapi_headers(),
                 params=params,
-                ssl=ssl_context  
+                ssl=ssl_context,
             ) as response:
                 if response.status == HTTP_OK:
                     result = await response.json()
@@ -492,37 +494,37 @@ class TwitterBot:
             new_mentions.append(tweet)
 
         return new_mentions
-    
+
     async def get_parent_tweet_text(self, tweet_id: Any) -> None:
         async with aiohttp.ClientSession() as session:
-                tweet_details = await self.fetch_tweet_details(tweet_id, session)
-                logger.info(f"Fetched tweet tweet raw response: {tweet_details}")
-                if tweet_details and "includes" in tweet_details:
-                    includes = tweet_details["includes"]
-                    logger.info(f"Fetched tweet includes: {includes}")
-                    tweets_array = includes.get("tweets", [])
-                    if tweets_array:
-                        parent_tweet_text = tweets_array[0].get("text", "")
-                        logger.info(f"Fetched parent tweet text: {parent_tweet_text}")
-                        return parent_tweet_text
-                    else:
-                        logger.warning("No tweets found in includes.")
+            tweet_details = await self.fetch_tweet_details(tweet_id, session)
+            logger.info(f"Fetched tweet tweet raw response: {tweet_details}")
+            if tweet_details and "includes" in tweet_details:
+                includes = tweet_details["includes"]
+                logger.info(f"Fetched tweet includes: {includes}")
+                tweets_array = includes.get("tweets", [])
+                if tweets_array:
+                    parent_tweet_text = tweets_array[0].get("text", "")
+                    logger.info(f"Fetched parent tweet text: {parent_tweet_text}")
+                    return parent_tweet_text
                 else:
-                    logger.info(f"Failed to fetch tweet details for tweet: {tweet_id}")
+                    logger.warning("No tweets found in includes.")
+            else:
+                logger.info(f"Failed to fetch tweet details for tweet: {tweet_id}")
         return None
-    
+
     async def get_replied_tweet_id(self, tweet_id: Any) -> None:
         async with aiohttp.ClientSession() as session:
-                tweet_details = await self.fetch_tweet_details(tweet_id, session)
-                if tweet_details and "data" in tweet_details:
-                    data = tweet_details["data"]
-                    referenced = data.get("referenced_tweets", [])
-                    for ref in referenced:
-                        if ref.get("type") == "replied_to":
-                            replied_to_id = ref.get("id")
-                            logger.info(f"Found replied-to tweet ID: {replied_to_id}")
-                            return replied_to_id
-                logger.info(f"Failed to extract replied-to tweet ID for tweet: {tweet_id}")
+            tweet_details = await self.fetch_tweet_details(tweet_id, session)
+            if tweet_details and "data" in tweet_details:
+                data = tweet_details["data"]
+                referenced = data.get("referenced_tweets", [])
+                for ref in referenced:
+                    if ref.get("type") == "replied_to":
+                        replied_to_id = ref.get("id")
+                        logger.info(f"Found replied-to tweet ID: {replied_to_id}")
+                        return replied_to_id
+            logger.info(f"Failed to extract replied-to tweet ID for tweet: {tweet_id}")
         return None
 
     async def handle_mention(self, tweet: dict[str, Any]) -> None:
@@ -530,7 +532,9 @@ class TwitterBot:
         tweet_id = tweet.get("id_str", "")
 
         if self.rate_limit_reset_time and time.time() < self.rate_limit_reset_time:
-            logger.warning(f"Rate limit in effect, skipping processing for tweet: {tweet_id}")
+            logger.warning(
+                f"Rate limit in effect, skipping processing for tweet: {tweet_id}"
+            )
             return
 
         # 2) Check if the tweet contains the trigger word "summarize"
@@ -553,7 +557,7 @@ class TwitterBot:
                 logger.warning(f"No X Space URL found in parent tweet: {tweet_id}")
 
             # 4) Locate the downloaded .m4a file in the current directory
-            m4a_file_path =  glob.glob("*.m4a")[0]
+            m4a_file_path = glob.glob("*.m4a")[0]
 
             if not m4a_file_path:
                 logger.error("No .m4a file found after donwloading space audio")
@@ -562,17 +566,19 @@ class TwitterBot:
 
             # 5) Read the audio file data
             audio_file_ref = self.ai_provider.upload_audio_file(m4a_file_path)
-        
+
             # # 5) Feed the audio data to Gemini
             summary_response = self.ai_provider.generate_multimodal_content(
                 prompt="You will tell me what this audio clip is about",
-                audio_file_ref=audio_file_ref
+                audio_file_ref=audio_file_ref,
             )
 
-         # 6) Log and post the summary (if available)
+            # 6) Log and post the summary (if available)
             if summary_response and summary_response.text:
                 logger.info("Gemini Summary: %s", summary_response.text)
-                summary_tweet_id = await self.post_reply(summary_response.text, tweet_id)
+                summary_tweet_id = await self.post_reply(
+                    summary_response.text, tweet_id
+                )
                 logger.debug(f"Summary tweet ID: {summary_tweet_id}")
                 # Save context for follow-ups
                 self.conversation_context[summary_tweet_id] = {
@@ -584,19 +590,23 @@ class TwitterBot:
         else:
             # If it’s a reply (follow-up), handle it in a separate method.
             await self.handle_followup(tweet)
-    
+
     async def handle_followup(self, tweet: dict[str, Any]) -> None:
         tweet_id = tweet.get("id_str", "")
         in_reply_to_id = await self.get_replied_tweet_id(tweet_id)
-   
+
         if not in_reply_to_id:
-            logger.debug(f"Tweet {tweet_id} is not a reply to summary tweet; resuming mention check cycle.")
+            logger.debug(
+                f"Tweet {tweet_id} is not a reply to summary tweet; resuming mention check cycle."
+            )
             return
 
         logger.debug(f"Tweet {tweet_id} replied to {in_reply_to_id}.")
         context = self.conversation_context.get(in_reply_to_id)
         if not context:
-            logger.warning(f"No conversation context/symmary tweet found for reply tweet: {tweet_id}")
+            logger.warning(
+                f"No conversation context/symmary tweet found for reply tweet: {tweet_id}"
+            )
             return
 
         # Build a follow-up prompt that includes the context (e.g., summary and/or audio reference)
@@ -619,8 +629,9 @@ class TwitterBot:
         else:
             logger.error("No response returned for follow-up question.")
 
-
-    async def fetch_tweet_details(self, tweet_id: str, session: aiohttp.ClientSession) -> dict[str, Any] | None:
+    async def fetch_tweet_details(
+        self, tweet_id: str, session: aiohttp.ClientSession
+    ) -> dict[str, Any] | None:
         # Only request the referenced_tweets field
         fields = "referenced_tweets"
         url = f"{self.twitter_api_base}/tweets/{tweet_id}?tweet.fields={fields}&expansions=referenced_tweets.id"
@@ -632,12 +643,18 @@ class TwitterBot:
                     return await response.json()
                 elif response.status == HTTP_RATE_LIMIT:
                     retry_after = response.headers.get("retry-after")
-                    wait_time = int(retry_after) if retry_after else 900  # default to 15 minutes
+                    wait_time = (
+                        int(retry_after) if retry_after else 900
+                    )  # default to 15 minutes
                     self.rate_limit_reset_time = time.time() + wait_time
-                    logger.warning(f"Rate limit exceeded when fetching tweet details for tweet: {tweet_id}. Waiting for {wait_time} seconds.")
+                    logger.warning(
+                        f"Rate limit exceeded when fetching tweet details for tweet: {tweet_id}. Waiting for {wait_time} seconds."
+                    )
                     return None
                 else:
-                    logger.error("Failed to fetch tweet details", status=response.status)
+                    logger.error(
+                        "Failed to fetch tweet details", status=response.status
+                    )
                     return None
         except Exception:
             logger.exception("Error fetching tweet details")
