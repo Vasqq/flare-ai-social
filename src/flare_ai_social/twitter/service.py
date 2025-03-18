@@ -1,16 +1,16 @@
 import asyncio
 import calendar
+import os
+import ssl
 import time
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import aiohttp
-import os
-import ssl
 import certifi
 import structlog
-import glob
 
 from flare_ai_social.ai import BaseAIProvider
 from flare_ai_social.twitter import utils
@@ -498,19 +498,18 @@ class TwitterBot:
     async def get_parent_tweet_text(self, tweet_id: Any) -> None:
         async with aiohttp.ClientSession() as session:
             tweet_details = await self.fetch_tweet_details(tweet_id, session)
-            logger.info(f"Fetched tweet tweet raw response: {tweet_details}")
+            logger.info("Fetched tweet tweet raw response: %s", tweet_details)
             if tweet_details and "includes" in tweet_details:
                 includes = tweet_details["includes"]
-                logger.info(f"Fetched tweet includes: {includes}")
+                logger.info("Fetched tweet includes: %s", includes)
                 tweets_array = includes.get("tweets", [])
                 if tweets_array:
                     parent_tweet_text = tweets_array[0].get("text", "")
-                    logger.info(f"Fetched parent tweet text: {parent_tweet_text}")
+                    logger.info("Fetched parent tweet text: %s", parent_tweet_text)
                     return parent_tweet_text
-                else:
-                    logger.warning("No tweets found in includes.")
+                logger.warning("No tweets found in includes.")
             else:
-                logger.info(f"Failed to fetch tweet details for tweet: {tweet_id}")
+                logger.info("Failed to fetch tweet details for tweet: %s", tweet_id)
         return None
 
     async def get_replied_tweet_id(self, tweet_id: Any) -> None:
@@ -522,9 +521,9 @@ class TwitterBot:
                 for ref in referenced:
                     if ref.get("type") == "replied_to":
                         replied_to_id = ref.get("id")
-                        logger.info(f"Found replied-to tweet ID: {replied_to_id}")
+                        logger.info("Found replied-to tweet ID: %s", replied_to_id)
                         return replied_to_id
-            logger.info(f"Failed to extract replied-to tweet ID for tweet: {tweet_id}")
+            logger.info("Failed to extract replied-to tweet ID for tweet: %s", tweet_id)
         return None
 
     async def handle_mention(self, tweet: dict[str, Any]) -> None:
@@ -533,62 +532,67 @@ class TwitterBot:
 
         if self.rate_limit_reset_time and time.time() < self.rate_limit_reset_time:
             logger.warning(
-                f"Rate limit in effect, skipping processing for tweet: {tweet_id}"
-            )
+                "Rate limit in effect, skipping tweet: %s", tweet_id)
             return
 
         # 2) Check if the tweet contains the trigger word "summarize"
         if "summarize" in tweet.get("full_text", "").lower():
-            logger.info(f"Trigger detected in tweet: {tweet_id}")
+            logger.info("Trigger detected in tweet: %s", tweet_id)
 
             # 3) Get the text containing the link to the X space from the parent tweet
             parent_tweet_text = await self.get_parent_tweet_text(tweet_id)
             if parent_tweet_text is None:
-                logger.error(f"Parent tweet text is None for tweet: {tweet_id}")
+                logger.error("Parent tweet text is None for tweet: %s", tweet_id)
                 return
 
             # 4) Extract and resolve the X Space URL from the parent tweet text.
             space_url = await utils.extract_link_from_text(parent_tweet_text)
             if space_url:
-                logger.info(f"Extracted X Space URL: {space_url}")
+                logger.info("Extracted X Space URL: %s", space_url)
                 # 5) Pass the resolved space URL to download the space audio.
                 await self.download_space_audio(space_url)
             else:
-                logger.warning(f"No X Space URL found in parent tweet: {tweet_id}")
+                logger.warning("No X Space URL found in parent tweet: %s", tweet_id)
 
             # 4) Locate the downloaded .m4a file in the current directory
-            m4a_file_path = glob.glob("*.m4a")[0]
+            m4a_file_path = next(Path().glob("*.m4a"), None)
 
             if not m4a_file_path:
                 logger.error("No .m4a file found after donwloading space audio")
                 return
-            logger.info(f"Using audio file: {m4a_file_path}")
+            logger.info("Using audio file: %s", m4a_file_path)
 
             # 5) Read the audio file data
-            audio_file_ref = self.ai_provider.upload_audio_file(m4a_file_path)
+            m4a_file_path = next(Path().glob("*.m4a"), None)
+            if m4a_file_path:  # Check if a file was found
+                audio_file_ref = self.ai_provider.upload_audio_file(str(m4a_file_path))
+            else:
+                # Handle the case where no file was found. For example:
+                audio_file_ref = None # or raise an exception
+                logger.warning("No m4a file found")
 
-            # # 5) Feed the audio data to Gemini
+            # 6) Feed the audio data to Gemini
             summary_response = self.ai_provider.generate_multimodal_content(
                 prompt="You will tell me what this audio clip is about",
                 audio_file_ref=audio_file_ref,
             )
 
-            # 6) Log and post the summary (if available)
+            # 7) Log and post the summary (if available)
             if summary_response and summary_response.text:
                 logger.info("Gemini Summary: %s", summary_response.text)
                 summary_tweet_id = await self.post_reply(
                     summary_response.text, tweet_id
                 )
-                logger.debug(f"Summary tweet ID: {summary_tweet_id}")
+                logger.debug("Summary tweet ID: %s", summary_tweet_id)
                 # Save context for follow-ups
                 self.conversation_context[summary_tweet_id] = {
                     "summary": summary_response.text,
-                    "audio_ref": audio_file_ref,  # or transcript if you extract it
+                    "audio_ref": audio_file_ref,
                 }
             else:
                 logger.error("No summary returned from Gemini.")
         else:
-            # If it’s a reply (follow-up), handle it in a separate method.
+            # If the tweet is a reply, handle it in a separate method.
             await self.handle_followup(tweet)
 
     async def handle_followup(self, tweet: dict[str, Any]) -> None:
@@ -597,34 +601,37 @@ class TwitterBot:
 
         if not in_reply_to_id:
             logger.debug(
-                f"Tweet {tweet_id} is not a reply to summary tweet; resuming mention check cycle."
+                "Tweet %s is not a reply to summary tweet; resuming.", tweet_id
             )
             return
 
-        logger.debug(f"Tweet {tweet_id} replied to {in_reply_to_id}.")
+        logger.debug("Tweet %s replied to %s.", tweet_id, in_reply_to_id)
         context = self.conversation_context.get(in_reply_to_id)
         if not context:
             logger.warning(
-                f"No conversation context/symmary tweet found for reply tweet: {tweet_id}"
+                "No conversation summary tweet found for reply: %s", tweet_id
             )
             return
 
-        # Build a follow-up prompt that includes the context (e.g., summary and/or audio reference)
+        # Build a follow-up prompt that includes the summary as context.
         followup_question = tweet.get("full_text", "")
         prompt = (
-            "You are ScribeChain, an AI social agent for Flare on X/Twitter. "
-            "Below is the audio file reference from an X Space. "
-            "Your task is to answer the following follow-up question strictly based on the content of that audio file. "
+            "You are ScribeChain, an AI social agent for Flare on X/Twitter."
+            "Below is the audio file reference from an X Space."
+            "Your task is to answer the following follow-up question strictly"
+            "based on the content of that audio file."
             "Do not reference any other context or generate off-topic responses.\n\n"
+            "Keep your answer specific, concise yet detailed if they ask for "
+            "specific dialogue in the audio file."
             f"Audio Reference: {context['audio_ref']}\n\n"
             f"Follow-up question: {followup_question}"
         )
-        logger.info(f"Sending follow-up prompt: {prompt}")
+        logger.info("Sending follow-up prompt: %s", prompt)
 
-        # Use send_message to generate a follow-up answer (assuming multi-turn chat is supported)
+        # Use send_message to generate a follow-up answer
         response = self.ai_provider.send_message(prompt)
         if response and response.text:
-            logger.info(f"Follow-up response: {response.text}")
+            logger.info("Follow-up response: %s", response.text)
             await self.post_reply(response.text, tweet_id)
         else:
             logger.error("No response returned for follow-up question.")
@@ -634,28 +641,32 @@ class TwitterBot:
     ) -> dict[str, Any] | None:
         # Only request the referenced_tweets field
         fields = "referenced_tweets"
-        url = f"{self.twitter_api_base}/tweets/{tweet_id}?tweet.fields={fields}&expansions=referenced_tweets.id"
+        url = (
+                self.twitter_api_base
+                + f"/tweets/{tweet_id}?tweet.fields={fields}"
+                + "&expansions=referenced_tweets.id"
+            )
         headers = self._get_twitter_api_headers("GET", url)
         ssl_context = ssl.create_default_context(cafile=certifi.where())
         try:
             async with session.get(url, headers=headers, ssl=ssl_context) as response:
                 if response.status == HTTP_OK:
                     return await response.json()
-                elif response.status == HTTP_RATE_LIMIT:
+                if response.status == HTTP_RATE_LIMIT:
                     retry_after = response.headers.get("retry-after")
                     wait_time = (
                         int(retry_after) if retry_after else 900
                     )  # default to 15 minutes
                     self.rate_limit_reset_time = time.time() + wait_time
                     logger.warning(
-                        f"Rate limit exceeded when fetching tweet details for tweet: {tweet_id}. Waiting for {wait_time} seconds."
+                        "Rate limit exceeded when fetching tweet details"
+                        "for tweet: {tweet_id}. Wait for {wait_time} seconds."
                     )
                     return None
-                else:
-                    logger.error(
-                        "Failed to fetch tweet details", status=response.status
-                    )
-                    return None
+                logger.error(
+                    "Failed to fetch tweet details", status=response.status
+                )
+                return None
         except Exception:
             logger.exception("Error fetching tweet details")
             return None
@@ -663,10 +674,12 @@ class TwitterBot:
     async def download_space_audio(self, space_url: str) -> None:
         """Download the audio from a completed X Space given its URL asynchronously."""
 
-        assert self.cookie_path is not None, "Cookie path must be provided"
+        if self.cookie_path is None:
+            logger.error("Missing cookie path")
+            return
 
         logger.info("Beginning X space download")
-        logger.info(f"PATH: {os.environ['PATH']}")
+        logger.info("PATH: %s", os.environ["PATH"])
         cmd = [
             "/bin/sh",
             "-c",
@@ -683,8 +696,8 @@ class TwitterBot:
                 logger.info("Space audio downloaded successfully: %s", stdout.decode())
             else:
                 logger.error("Error downloading space audio: %s", stderr.decode())
-        except Exception as e:
-            logger.exception("Exception while downloading space audio: %s", str(e))
+        except Exception:
+            logger.exception("Exception while downloading space audio.")
 
     async def monitor_mentions(self) -> None:
         """Main method to monitor mentions for all accounts"""

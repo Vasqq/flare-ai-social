@@ -1,5 +1,5 @@
-from pathlib import Path
 import os
+from pathlib import Path
 
 import structlog
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -45,7 +45,6 @@ class Settings(BaseSettings):
 
     # RapidAPI configuration for X/Twitter search (required for the TwitterBot)
     rapidapi_key: str = os.getenv("RAPIDAPI_KEY", "")
-    # rapidapi_host: str = "twitter241.p.rapidapi.com"
     rapidapi_host: str = os.getenv("RAPIDAPI_HOST", "twitter241.p.rapidapi.com")
 
     # Twitter accounts to monitor (comma-separated list with @ symbols)

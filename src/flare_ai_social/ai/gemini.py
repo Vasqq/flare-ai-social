@@ -125,7 +125,7 @@ class GeminiProvider(BaseAIProvider):
 
         Args:
             prompt (str): The text prompt.
-            audio_file_ref (Any): The audio file reference returned from upload_audio_file.
+            audio_file_ref (Any): The audio file ref returned from upload_audio_file.
             response_mime_type (str | None): Expected MIME type for the response.
             response_schema (Any | None): Schema for the expected response structure.
 
@@ -187,7 +187,7 @@ class GeminiProvider(BaseAIProvider):
     @override
     def upload_audio_file(self, file_path: str) -> Any:
         """
-        Upload an audio file using Google’s Generative AI file service.
+        Upload an audio file using Google Generative AI file service.
 
         Args:
             file_path (str): The path to the audio file.

@@ -1,10 +1,9 @@
-import re
 import asyncio
-import ssl
-import certifi
-import urllib.parse
-import requests
 import logging
+import re
+
+import certifi
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -13,21 +12,24 @@ def resolve_tco_url_sync(tco_url: str) -> str:
     """
     Synchronously resolves a t.co URL using requests and returns the final URL.
     """
-    response = requests.get(tco_url, allow_redirects=True, verify=certifi.where())
+    response = requests.get(tco_url, allow_redirects=True, \
+                            verify=certifi.where(), timeout=10)
     return response.url
 
 
 async def resolve_tco_url_async(tco_url: str) -> str | None:
     """
-    Asynchronously resolves a t.co URL by running the synchronous resolution in a thread.
+    Asynchronously resolves a t.co URL by running the
+    synchronous resolution in a thread.
     """
     try:
         final_url = await asyncio.to_thread(resolve_tco_url_sync, tco_url)
-        logger.info(f"Resolved {tco_url} to {final_url}")
-        return final_url
-    except Exception as e:
-        logger.exception(f"Error resolving t.co URL: {tco_url}: {e}")
+        logger.info("Resolved %s to %s", tco_url, final_url)
+    except Exception:
+        logger.exception("Error resolving t.co URL: %s", tco_url)
         return None
+    else:
+        return final_url
 
 
 async def extract_link_from_text(text: str) -> str | None:
@@ -44,6 +46,5 @@ async def extract_link_from_text(text: str) -> str | None:
     match = re.search(pattern, text)
     if match:
         tco_link = match.group(0)
-        final_url = await resolve_tco_url_async(tco_link)
-        return final_url
+        return await resolve_tco_url_async(tco_link)
     return None
