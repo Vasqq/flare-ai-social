@@ -196,6 +196,6 @@ class GeminiProvider(BaseAIProvider):
         Returns:
             A file reference.
         """
-        file_ref = files.upload_file(file_path, mime_type="audio/mp4") # noqa: E402
+        file_ref = files.upload_file(file_path, mime_type="audio/mp4")  # noqa: E402
         self.logger.info("Uploaded audio file", file_ref=file_ref)
         return file_ref

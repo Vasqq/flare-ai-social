@@ -531,8 +531,7 @@ class TwitterBot:
         tweet_id = tweet.get("id_str", "")
 
         if self.rate_limit_reset_time and time.time() < self.rate_limit_reset_time:
-            logger.warning(
-                "Rate limit in effect, skipping tweet: %s", tweet_id)
+            logger.warning("Rate limit in effect, skipping tweet: %s", tweet_id)
             return
 
         # 2) Check if the tweet contains the trigger word "summarize"
@@ -568,7 +567,7 @@ class TwitterBot:
                 audio_file_ref = self.ai_provider.upload_audio_file(str(m4a_file_path))
             else:
                 # Handle the case where no file was found. For example:
-                audio_file_ref = None # or raise an exception
+                audio_file_ref = None  # or raise an exception
                 logger.warning("No m4a file found")
 
             # 6) Feed the audio data to Gemini
@@ -627,7 +626,7 @@ class TwitterBot:
             "question based solely on the audio content provided.\n\n"
             f"Audio File Reference: {context['audio_ref']}\n\n"
             f"User's Follow-up Question: {followup_question}"
-            )
+        )
         logger.info("Sending follow-up prompt: %s", prompt)
 
         # Use send_message to generate a follow-up answer
@@ -644,10 +643,10 @@ class TwitterBot:
         # Only request the referenced_tweets field
         fields = "referenced_tweets"
         url = (
-                self.twitter_api_base
-                + f"/tweets/{tweet_id}?tweet.fields={fields}"
-                + "&expansions=referenced_tweets.id"
-            )
+            self.twitter_api_base
+            + f"/tweets/{tweet_id}?tweet.fields={fields}"
+            + "&expansions=referenced_tweets.id"
+        )
         headers = self._get_twitter_api_headers("GET", url)
         ssl_context = ssl.create_default_context(cafile=certifi.where())
         try:
@@ -665,9 +664,7 @@ class TwitterBot:
                         "for tweet: {tweet_id}. Wait for {wait_time} seconds."
                     )
                     return None
-                logger.error(
-                    "Failed to fetch tweet details", status=response.status
-                )
+                logger.error("Failed to fetch tweet details", status=response.status)
                 return None
         except Exception:
             logger.exception("Error fetching tweet details")

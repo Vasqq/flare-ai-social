@@ -12,8 +12,9 @@ def resolve_tco_url_sync(tco_url: str) -> str:
     """
     Synchronously resolves a t.co URL using requests and returns the final URL.
     """
-    response = requests.get(tco_url, allow_redirects=True, \
-                            verify=certifi.where(), timeout=10)
+    response = requests.get(
+        tco_url, allow_redirects=True, verify=certifi.where(), timeout=10
+    )
     return response.url
 
 
