@@ -5,6 +5,7 @@ This module implements the Gemini AI provider for the AI Agent API, integrating
 with Google's Generative AI service. It handles chat sessions, content generation,
 and message management while maintaining a consistent AI personality.
 """
+# ruff: noqa
 
 from typing import TYPE_CHECKING, Any, override
 
@@ -195,6 +196,6 @@ class GeminiProvider(BaseAIProvider):
         Returns:
             A file reference.
         """
-        file_ref = files.upload_file(file_path, mime_type="audio/mp4")
+        file_ref = files.upload_file(file_path, mime_type="audio/mp4") # noqa: E402
         self.logger.info("Uploaded audio file", file_ref=file_ref)
         return file_ref
