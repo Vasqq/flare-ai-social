@@ -15,7 +15,6 @@ COPY --from=backend-builder /flare-ai-social/.venv ./.venv
 COPY --from=backend-builder /flare-ai-social/src ./src
 COPY --from=backend-builder /flare-ai-social/pyproject.toml .
 COPY --from=backend-builder /flare-ai-social/README.md .
-COPY cookies.txt /app/cookies.txt
 
 RUN chmod +x /app/.venv/bin/twspace_dl
 RUN sed -i '1s,#!/flare-ai-social/.venv/bin/python,#!/app/.venv/bin/python,' /app/.venv/bin/twspace_dl
