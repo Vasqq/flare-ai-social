@@ -24,6 +24,7 @@ dependencies = [
     "python-telegram-bot>=20.7",
     "pandas>=2.2.3",
     "seaborn>=0.13.2",
+    "twspace-dl>=2024.7.2.1",
 ]
 
 [project.scripts]

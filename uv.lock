@@ -1,4 +1,5 @@
 version = 1
+revision = 1
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -333,6 +334,7 @@ dependencies = [
     { name = "seaborn" },
     { name = "structlog" },
     { name = "tweepy" },
+    { name = "twspace-dl" },
     { name = "uvicorn" },
 ]
 
@@ -360,6 +362,7 @@ requires-dist = [
     { name = "seaborn", specifier = ">=0.13.2" },
     { name = "structlog", specifier = ">=25.1.0" },
     { name = "tweepy", specifier = ">=4.15.0" },
+    { name = "twspace-dl", specifier = ">=2024.7.2.1" },
     { name = "uvicorn", specifier = ">=0.34.0" },
 ]
 
@@ -776,6 +779,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/38/e0/4f5855037a72cd8a7a2f60a3952d9aa45feedb37ae7831642102604e8a37/multidict-6.1.0-cp313-cp313-win32.whl", hash = "sha256:3a37ffb35399029b45c6cc33640a92bef403c9fd388acce75cdc88f58bd19a81", size = 26426 },
     { url = "https://files.pythonhosted.org/packages/7e/a5/17ee3a4db1e310b7405f5d25834460073a8ccd86198ce044dfaf69eac073/multidict-6.1.0-cp313-cp313-win_amd64.whl", hash = "sha256:e9aa71e15d9d9beaad2c6b9319edcdc0a49a43ef5c0a4c8265ca9ee7d6c67774", size = 28531 },
     { url = "https://files.pythonhosted.org/packages/99/b7/b9e70fde2c0f0c9af4cc5277782a89b66d35948ea3369ec9f598358c3ac5/multidict-6.1.0-py3-none-any.whl", hash = "sha256:48e171e52d1c4d33888e529b999e5900356b9ae588c2f09a52dcefb158b27506", size = 10051 },
+]
+
+[[package]]
+name = "mutagen"
+version = "1.47.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/81/e6/64bc71b74eef4b68e61eb921dcf72dabd9e4ec4af1e11891bbd312ccbb77/mutagen-1.47.0.tar.gz", hash = "sha256:719fadef0a978c31b4cf3c956261b3c58b6948b32023078a2117b1de09f0fc99", size = 1274186 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b0/7a/620f945b96be1f6ee357d211d5bf74ab1b7fe72a9f1525aafbfe3aee6875/mutagen-1.47.0-py3-none-any.whl", hash = "sha256:edd96f50c5907a9539d8e5bba7245f62c9f520aef333d13392a79a4f70aca719", size = 194391 },
 ]
 
 [[package]]
@@ -1346,6 +1358,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/99/05/7c2c01bd62900eff24534779f1e1531491dfd872edb6a9d432ae91e18b4b/tweepy-4.15.0.tar.gz", hash = "sha256:1345cbcdf0a75e2d89f424c559fd49fda4d8cd7be25cd5131e3b57bad8a21d76", size = 100268 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/81/53/ca632ec02085b5c432e98ae1f872a21f2b6bb6c3d022dcf586809cc65cd0/tweepy-4.15.0-py3-none-any.whl", hash = "sha256:64adcea317158937059e4e2897b3ceb750b0c2dd5df58938c2da8f7eb3b88e6a", size = 99379 },
+]
+
+[[package]]
+name = "twspace-dl"
+version = "2024.7.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mutagen" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9c/e0/b5f8d05405d80cb7ca8ee437e9f15dbefc988301dea7673ad032e4b96193/twspace_dl-2024.7.2.1.tar.gz", hash = "sha256:18bb3e50610eb1d19ca7f98487ed7656cf97958d60a04aa5ed4380bd5562d698", size = 22862 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ce/ff/c51e903c1b7944c608df42cb0fa233223a50d88d320dd4aa6fbc35d9fb52/twspace_dl-2024.7.2.1-py3-none-any.whl", hash = "sha256:22232d4cb61a6dfd2df08ef3bf610ee8a082ea5d34ce68aa5ddb45806d401925", size = 23429 },
 ]
 
 [[package]]

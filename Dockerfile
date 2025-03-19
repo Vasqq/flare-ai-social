@@ -1,43 +1,30 @@
-# Stage 1: Build Frontend
-FROM node:18-alpine AS frontend-builder
-WORKDIR /frontend
-COPY chat-ui/ .
-RUN npm install
-RUN npm run build
-
-# Stage 2: Build Backend
+# Stage 1: Build Backend
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS backend-builder
-ADD . /flare-ai-social
 WORKDIR /flare-ai-social
-RUN uv sync --frozen
+# Copy all backend source files and configuration into the image.
+COPY . .
+# Install dependencies using uv sync
+RUN uv sync --all-extras
+RUN apt-get update && apt-get install -y ffmpeg
 
-# Stage 3: Final Image
+# Stage 2: Final Image
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
-
-# Install nginx
-RUN apt-get update && apt-get install -y nginx supervisor curl && \
-    rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
+# Copy the virtual environment and necessary files from the builder stage.
 COPY --from=backend-builder /flare-ai-social/.venv ./.venv
 COPY --from=backend-builder /flare-ai-social/src ./src
 COPY --from=backend-builder /flare-ai-social/pyproject.toml .
 COPY --from=backend-builder /flare-ai-social/README.md .
+COPY cookies.txt /app/cookies.txt
 
-# Copy frontend files
-COPY --from=frontend-builder /frontend/build /usr/share/nginx/html
+RUN chmod +x /app/.venv/bin/twspace_dl
+RUN sed -i '1s,#!/flare-ai-social/.venv/bin/python,#!/app/.venv/bin/python,' /app/.venv/bin/twspace_dl
+RUN apt-get update && apt-get install -y ffmpeg
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/sites-enabled/default
+RUN . ./.venv/bin/activate
 
-# Setup supervisor configuration
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
-# Allow workload operator to override environment variables
-LABEL "tee.launch_policy.allow_env_override"="GEMINI_API_KEY,TUNED_MODEL_NAME,SIMULATE_ATTESTATION"
-LABEL "tee.launch_policy.log_redirect"="always"
-
+# Expose port 80
 EXPOSE 80
 
-# Start supervisor (which will start both nginx and the backend)
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Command to start the Twitter bot
+CMD ["uv", "run", "start-bots"]
