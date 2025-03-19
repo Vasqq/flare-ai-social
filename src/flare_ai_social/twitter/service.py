@@ -616,16 +616,18 @@ class TwitterBot:
         # Build a follow-up prompt that includes the summary as context.
         followup_question = tweet.get("full_text", "")
         prompt = (
-            "You are ScribeChain, an AI social agent for Flare on X/Twitter."
-            "Below is the audio file reference from an X Space."
-            "Your task is to answer the following follow-up question strictly"
-            "based on the content of that audio file."
-            "Do not reference any other context or generate off-topic responses.\n\n"
-            "Keep your answer specific, concise yet detailed if they ask for "
-            "specific dialogue in the audio file."
-            f"Audio Reference: {context['audio_ref']}\n\n"
-            f"Follow-up question: {followup_question}"
-        )
+            "You are ScribeChain, an AI social agent on X/Twitter with access "
+            "to the full content of a specific X Space audio file. "
+            "Your task is to answer the following follow-up question using "
+            "only the information contained in the referenced audio file. "
+            "Do not bring in any external context, opinions, or unrelated data."
+            " If the question calls for specific details (such as names, quotes,"
+            " or timestamps), include them only if they appear in the audio. "
+            "Your answer should be clear, concise, and directly address the "
+            "question based solely on the audio content provided.\n\n"
+            f"Audio File Reference: {context['audio_ref']}\n\n"
+            f"User's Follow-up Question: {followup_question}"
+            )
         logger.info("Sending follow-up prompt: %s", prompt)
 
         # Use send_message to generate a follow-up answer
