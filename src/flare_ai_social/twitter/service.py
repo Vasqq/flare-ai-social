@@ -661,7 +661,9 @@ class TwitterBot:
                     self.rate_limit_reset_time = time.time() + wait_time
                     logger.warning(
                         "Rate limit exceeded when fetching tweet details"
-                        "for tweet: {tweet_id}. Wait for {wait_time} seconds."
+                        "for tweet: %s. Wait for %s seconds.",
+                        tweet_id,
+                        wait_time,
                     )
                     return None
                 logger.error("Failed to fetch tweet details", status=response.status)
@@ -675,6 +677,13 @@ class TwitterBot:
 
         if self.cookie_path is None:
             logger.error("Missing cookie path")
+            return
+
+        logger.info("Cookie Path Value: %s", self.cookie_path)
+        if os.path.exists(self.cookie_path):
+            logger.info("Cookie file exists")
+        else:
+            logger.error("Cookie file does not exist at the specified path")
             return
 
         logger.info("Beginning X space download")
