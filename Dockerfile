@@ -22,6 +22,9 @@ RUN apt-get update && apt-get install -y ffmpeg
 
 RUN . ./.venv/bin/activate
 
+LABEL "tee.launch_policy.allow_env_override"="GEMINI_API_KEY,TUNED_MODEL_NAME,ENABLE_TWITTER,X_BEARER_TOKEN,X_API_KEY,X_API_KEY_SECRET,X_ACCESS_TOKEN,X_ACCESS_TOKEN_SECRET,RAPIDAPI_KEY,RAPIDAPI_HOST,TWITTER_POLLING_INTERVAL,COOKIE_PATH"
+LABEL "tee.launch_policy.log_redirect"="always"
+
 # Expose port 80
 EXPOSE 80
 
