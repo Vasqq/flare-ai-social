@@ -65,7 +65,6 @@ while True:
 
 ## Known Quirks
 
-* **Twitter API Rate Limits:** Due to the free tier of the Twitter API v2, ScribeChain's posting frequency is currently limited to approximately once every 15 minutes. 
 * **Alpha Stage:** ScribeChain is currently in its alpha phase. This means it's still under active development, and you might encounter some rough edges. 
 * **Audio Quality Dependence:** The accuracy of ScribeChain's summaries can be affected by the audio quality of the Twitter Space. Noisy or unclear audio may result in less accurate summaries.
 * **Language Limitations:** Currently, ScribeChain is optimized for English-language Twitter Spaces. While it may provide summaries for other languages, the accuracy may vary.
