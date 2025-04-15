@@ -72,7 +72,6 @@ class BotManager:
         self.ai_provider = GeminiProvider(
             settings.gemini_api_key,
             model_name="gemini-2.0-flash",
-            # system_instruction=FEW_SHOT_SUMMARY_PROMPT,
         )
 
     def _check_ai_provider_initialized(self) -> BaseAIProvider:

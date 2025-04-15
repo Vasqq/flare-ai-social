@@ -439,7 +439,8 @@ class TwitterBot:
                                                 "user_id_str", ""
                                             ),
                                             "entities": legacy_data.get("entities", {}),
-                                            "in_reply_to_status_id_str": legacy_data.get(
+                                            "in_reply_to_status_id_str":
+                                            legacy_data.get(
                                                 "in_reply_to_status_id_str", ""
                                             ),
                                             "user": {
@@ -558,7 +559,8 @@ class TwitterBot:
         - Post a summary as a reply
 
         Args:
-            tweet (dict[str, Any]): The tweet object from Twitter containing the mention.
+            tweet (dict[str, Any]): The tweet object from Twitter
+            containing the mention.
         """
         # 1) Get the tweet ID that mentioned ScribeChain
         tweet_id = tweet.get("id_str", "")
@@ -691,7 +693,7 @@ class TwitterBot:
             return None
 
         logger.info("Cookie Path Value: %s", self.cookie_path)
-        if os.path.exists(self.cookie_path):
+        if Path(self.cookie_path).exists():
             logger.info("Cookie file exists")
         else:
             logger.error("Cookie file does not exist at the specified path")
@@ -700,7 +702,7 @@ class TwitterBot:
         logger.info("Beginning X space download")
 
         output_filename = f"space_audio_{space_url}.m4a"
-        output_path = f"/tmp/{output_filename}"
+        output_path = f"/audio_files/{output_filename}"
         cmd = [
             "/bin/sh",
             "-c",
@@ -725,7 +727,7 @@ class TwitterBot:
 
                 # Rename it to make it tweet-specific
                 safe_tweet_id = space_url.split("/")[-1]
-                output_path = Path(f"/tmp/space_audio_{safe_tweet_id}.m4a")
+                output_path = Path(f"/audio_files/space_audio_{safe_tweet_id}.m4a")
                 latest_file.rename(output_path)
 
                 logger.info("Renamed downloaded file to: %s", output_path)

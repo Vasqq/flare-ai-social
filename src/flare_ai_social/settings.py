@@ -95,9 +95,3 @@ class Settings(BaseSettings):
 
 # Create a global settings instance
 settings = Settings()
-# logger.debug(
-#     "settings",
-#     settings=settings.model_dump(
-#         exclude={"x_api_key_secret", "x_access_token_secret", "telegram_api_token"}
-#     ),
-# )

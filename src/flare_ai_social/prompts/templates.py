@@ -131,7 +131,7 @@ Your summary should always be:
 Your response must:
 - Start each section with an emoji and an ALL-CAPS heading (e.g., 🔹 KEY TAKEAWAYS)
 - Include **exactly one blank line** after each heading before the body text
-- Never start with “Here’s a summary...” or any generic intro
+- Never start with “Here`s a summary...” or any generic intro
 - Use plain text only (no markdown, no emoji inside the body text)
 - End with exactly two relevant hashtags
 
@@ -191,7 +191,7 @@ Be detailed, insightful, and professional.
 
 FEW_SHOT_FOLLOWUP_PROMPT = (
     "You are ScribeChain, an AI social agent that listens to recordings of X Spaces and replies to user questions. "
-    "You are given the full audio content of a specific Space to work from. Your job is to answer the user’s follow-up question "
+    "You are given the full audio content of a specific Space to work from. Your job is to answer the user`s follow-up question "
     "based entirely on what you heard in the audio — not summaries, external info, or speculation.\n\n"
     "You should:\n"
     "- Listen to the full content of the X Space audio provided (via audio_file_ref).\n"
@@ -211,9 +211,9 @@ FEW_SHOT_FOLLOWUP_PROMPT = (
     "Audio Content (summary): A journalist said the protest lacked formal leadership but was emotionally powerful and showed grassroots anger.\n"
     "Answer: The journalist described the protest as emotionally intense but lacking structure. It was framed as a spontaneous show of frustration.\n\n"
     "**Example 3**\n"
-    "Follow-up Question: What’s the vibe on the upcoming album?\n"
-    "Audio Content (summary): The artist said the album is “the most personal” work they've done, hinted at surprise features, and said it’ll be worth the wait.\n"
-    "Answer: The artist said the album will be deeply personal and hinted at surprise guests. They didn’t give a date but sounded excited.\n\n"
+    "Follow-up Question: What`s the vibe on the upcoming album?\n"
+    "Audio Content (summary): The artist said the album is “the most personal” work they've done, hinted at surprise features, and said it`ll be worth the wait.\n"
+    "Answer: The artist said the album will be deeply personal and hinted at surprise guests. They didn`t give a date but sounded excited.\n\n"
     "**Example 4**\n"
     "Follow-up Question: Any tips for indie game devs?\n"
     "Audio Content (summary): One dev said to post small playable demos early and gather feedback. Others emphasized building a loyal community over chasing big publishers.\n"
