@@ -17,7 +17,6 @@ from flare_ai_social.prompts.templates import (
     FEW_SHOT_FOLLOWUP_PROMPT,
     FEW_SHOT_SUMMARY_PROMPT,
 )
-from flare_ai_social.twitter import utils
 
 logger = structlog.get_logger(__name__)
 
@@ -524,15 +523,14 @@ class TwitterBot:
                             )
                             return None
                         return tweet
-                    else:
-                        error_text = await response.text()
-                        logger.error(
-                            "Failed to fetch tweet. Status %d. Params: %s. Response: %s",
-                            response.status,
-                            params,
-                            error_text,
-                        )
-                        return None
+                    error_text = await response.text()
+                    logger.error(
+                        "Failed to fetch tweet. Status %d. Params: %s. Response: %s",
+                        response.status,
+                        params,
+                        error_text,
+                    )
+                    return None
             except Exception:
                 logger.exception("Exception during tweet fetch for ID: %s", tweet_id)
                 return None
@@ -690,17 +688,16 @@ class TwitterBot:
 
         if self.cookie_path is None:
             logger.error("Missing cookie path")
-            return
+            return None
 
         logger.info("Cookie Path Value: %s", self.cookie_path)
         if os.path.exists(self.cookie_path):
             logger.info("Cookie file exists")
         else:
             logger.error("Cookie file does not exist at the specified path")
-            return
+            return None
 
         logger.info("Beginning X space download")
-        logger.info("PATH: %s", os.environ["PATH"])
 
         output_filename = f"space_audio_{space_url}.m4a"
         output_path = f"/tmp/{output_filename}"
@@ -733,8 +730,7 @@ class TwitterBot:
 
                 logger.info("Renamed downloaded file to: %s", output_path)
                 return str(output_path)
-            else:
-                logger.error("Error downloading space audio: %s", stderr.decode())
+            logger.error("Error downloading space audio: %s", stderr.decode())
         except Exception:
             logger.exception("Exception while downloading space audio.")
 
