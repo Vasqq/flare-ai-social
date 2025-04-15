@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     twitter_accounts_to_monitor: str = "@ScribeChainFLR"
 
     # Twitter monitoring interval in seconds
-    twitter_polling_interval: int = 60
+    twitter_polling_interval: int = 15
 
     # Telegram Bot settings
     enable_telegram: bool = False  # Enable Telegram bot
@@ -95,9 +95,3 @@ class Settings(BaseSettings):
 
 # Create a global settings instance
 settings = Settings()
-logger.debug(
-    "settings",
-    settings=settings.model_dump(
-        exclude={"x_api_key_secret", "x_access_token_secret", "telegram_api_token"}
-    ),
-)

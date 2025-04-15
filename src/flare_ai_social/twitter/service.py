@@ -13,7 +13,10 @@ import certifi
 import structlog
 
 from flare_ai_social.ai import BaseAIProvider
-from flare_ai_social.twitter import utils
+from flare_ai_social.prompts.templates import (
+    FEW_SHOT_FOLLOWUP_PROMPT,
+    FEW_SHOT_SUMMARY_PROMPT,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -86,12 +89,10 @@ class TwitterBot:
         self.accounts_to_monitor = config.accounts_to_monitor or ["@ScribeChainFLR"]
         self.polling_interval = config.polling_interval
 
-        # Rate limit reset time tracker for X Api V2 free tier
-        self.rate_limit_reset_time: float | None = None
-
         # API endpoints
         self.twitter_api_base = "https://api.twitter.com/2"
         self.rapidapi_search_endpoint = f"https://{self.rapidapi_host}/search-v2"
+        self.rapidapi_tweet_lookup_endpoint = f"https://{self.rapidapi_host}/tweet"
 
         logger.info(
             "TwitterBot initialized - monitoring mentions for accounts",
@@ -438,6 +439,9 @@ class TwitterBot:
                                                 "user_id_str", ""
                                             ),
                                             "entities": legacy_data.get("entities", {}),
+                                            "in_reply_to_status_id_str": legacy_data.get(
+                                                "in_reply_to_status_id_str", ""
+                                            ),
                                             "user": {
                                                 "screen_name": user_data.get(
                                                     "screen_name", ""
@@ -495,199 +499,209 @@ class TwitterBot:
 
         return new_mentions
 
-    async def get_parent_tweet_text(self, tweet_id: Any) -> None:
+    async def fetch_tweet_by_id(self, tweet_id: str) -> None:
+        """
+        Fetch a tweet object by its ID using the RapidAPI tweet lookup endpoint.
+        Returns the full tweet data or None if it fails.
+        """
+        params = {"pid": tweet_id}
         async with aiohttp.ClientSession() as session:
-            tweet_details = await self.fetch_tweet_details(tweet_id, session)
-            logger.info("Fetched tweet tweet raw response: %s", tweet_details)
-            if tweet_details and "includes" in tweet_details:
-                includes = tweet_details["includes"]
-                logger.info("Fetched tweet includes: %s", includes)
-                tweets_array = includes.get("tweets", [])
-                if tweets_array:
-                    parent_tweet_text = tweets_array[0].get("text", "")
-                    logger.info("Fetched parent tweet text: %s", parent_tweet_text)
-                    return parent_tweet_text
-                logger.warning("No tweets found in includes.")
-            else:
-                logger.info("Failed to fetch tweet details for tweet: %s", tweet_id)
-        return None
+            try:
+                ssl_context = ssl.create_default_context(cafile=certifi.where())
+                async with session.get(
+                    self.rapidapi_tweet_lookup_endpoint,
+                    headers=self._get_rapidapi_headers(),
+                    params=params,
+                    ssl=ssl_context,
+                ) as response:
+                    if response.status == HTTP_OK:
+                        tweet_data = await response.json()
+                        tweet = tweet_data.get("tweet")
+                        if not tweet:
+                            logger.warning(
+                                "No tweet object found in response: %s", tweet_data
+                            )
+                            return None
+                        return tweet
+                    error_text = await response.text()
+                    logger.error(
+                        "Failed to fetch tweet. Status %d. Params: %s. Response: %s",
+                        response.status,
+                        params,
+                        error_text,
+                    )
+                    return None
+            except Exception:
+                logger.exception("Exception during tweet fetch for ID: %s", tweet_id)
+                return None
 
-    async def get_replied_tweet_id(self, tweet_id: Any) -> None:
-        async with aiohttp.ClientSession() as session:
-            tweet_details = await self.fetch_tweet_details(tweet_id, session)
-            if tweet_details and "data" in tweet_details:
-                data = tweet_details["data"]
-                referenced = data.get("referenced_tweets", [])
-                for ref in referenced:
-                    if ref.get("type") == "replied_to":
-                        replied_to_id = ref.get("id")
-                        logger.info("Found replied-to tweet ID: %s", replied_to_id)
-                        return replied_to_id
-            logger.info("Failed to extract replied-to tweet ID for tweet: %s", tweet_id)
+    async def get_replied_tweet_id(self, tweet_id: str) -> None:
+        """
+        Returns the ID of the tweet this tweet is replying to, if any.
+        """
+        tweet = await self.fetch_tweet_by_id(tweet_id)
+        if tweet:
+            replied_to_id = tweet.get("in_reply_to_status_id_str")
+            if replied_to_id:
+                logger.info("Found replied-to tweet ID: %s", replied_to_id)
+                return replied_to_id
+
+        logger.info("No replied-to tweet ID found for tweet: %s", tweet_id)
         return None
 
     async def handle_mention(self, tweet: dict[str, Any]) -> None:
-        # 1) Get the tweet ID where ScribeChain was mentioned
-        tweet_id = tweet.get("id_str", "")
+        """
+        Handle a mention of the bot. If the tweet contains the trigger word "summarize"
+        and is a reply to another tweet containing an X Space link, this function will:
+        - Download the audio from the linked X Space
+        - Transcribe and summarize the content using a multimodal AI provider
+        - Post a summary as a reply
 
-        if self.rate_limit_reset_time and time.time() < self.rate_limit_reset_time:
-            logger.warning("Rate limit in effect, skipping tweet: %s", tweet_id)
-            return
+        Args:
+            tweet (dict[str, Any]): The tweet object from Twitter
+            containing the mention.
+        """
+        # 1) Get the tweet ID that mentioned ScribeChain
+        tweet_id = tweet.get("id_str", "")
 
         # 2) Check if the tweet contains the trigger word "summarize"
-        if "summarize" in tweet.get("full_text", "").lower():
-            logger.info("Trigger detected in tweet: %s", tweet_id)
-
-            # 3) Get the text containing the link to the X space from the parent tweet
-            parent_tweet_text = await self.get_parent_tweet_text(tweet_id)
-            if parent_tweet_text is None:
-                logger.error("Parent tweet text is None for tweet: %s", tweet_id)
-                return
-
-            # 4) Extract and resolve the X Space URL from the parent tweet text.
-            space_url = await utils.extract_link_from_text(parent_tweet_text)
-            if space_url:
-                logger.info("Extracted X Space URL: %s", space_url)
-                # 5) Pass the resolved space URL to download the space audio.
-                await self.download_space_audio(space_url)
-            else:
-                logger.warning("No X Space URL found in parent tweet: %s", tweet_id)
-
-            # 4) Locate the downloaded .m4a file in the current directory
-            m4a_file_path = next(Path().glob("*.m4a"), None)
-
-            if not m4a_file_path:
-                logger.error("No .m4a file found after donwloading space audio")
-                return
-            logger.info("Using audio file: %s", m4a_file_path)
-
-            # 5) Read the audio file data
-            m4a_file_path = next(Path().glob("*.m4a"), None)
-            if m4a_file_path:  # Check if a file was found
-                audio_file_ref = self.ai_provider.upload_audio_file(str(m4a_file_path))
-            else:
-                # Handle the case where no file was found. For example:
-                audio_file_ref = None  # or raise an exception
-                logger.warning("No m4a file found")
-
-            # 6) Feed the audio data to Gemini
-            summary_response = self.ai_provider.generate_multimodal_content(
-                prompt="You will tell me what this audio clip is about",
-                audio_file_ref=audio_file_ref,
-            )
-
-            # 7) Log and post the summary (if available)
-            if summary_response and summary_response.text:
-                logger.info("Gemini Summary: %s", summary_response.text)
-                summary_tweet_id = await self.post_reply(
-                    summary_response.text, tweet_id
-                )
-                logger.debug("Summary tweet ID: %s", summary_tweet_id)
-                # Save context for follow-ups
-                self.conversation_context[summary_tweet_id] = {
-                    "summary": summary_response.text,
-                    "audio_ref": audio_file_ref,
-                }
-            else:
-                logger.error("No summary returned from Gemini.")
-        else:
-            # If the tweet is a reply, handle it in a separate method.
+        if "summarize" not in tweet.get("full_text", "").lower():
             await self.handle_followup(tweet)
+            return
+
+        logger.info("Trigger detected in tweet: %s", tweet_id)
+
+        # 3) Identify parent tweet ID
+        parent_tweet_id = tweet.get("in_reply_to_status_id_str")
+        if not parent_tweet_id:
+            logger.error("Parent tweet is None for tweet: %s", tweet_id)
+            return
+
+        logger.info("Parent tweet ID: %s", parent_tweet_id)
+
+        parent_tweet = await self.fetch_tweet_by_id(parent_tweet_id)
+        if not parent_tweet:
+            logger.error("Failed to fetch parent tweet for ID: %s", parent_tweet_id)
+            return
+
+        # 4) Extract X Space URL
+        space_url = (
+            parent_tweet.get("entities", {}).get("urls", [{}])[0].get("expanded_url")
+        )
+        if not space_url:
+            logger.warning("No X Space URL found in parent tweet: %s", tweet_id)
+            return
+
+        logger.info("Extracted X Space URL: %s", space_url)
+
+        # 5) Download audio from X Space and retrieve its location
+        m4a_file_path = await self.download_space_audio(space_url)
+        if not m4a_file_path:
+            logger.error("No .m4a file found after downloading space audio")
+            return
+
+        logger.debug("Using audio file: %s", m4a_file_path)
+
+        # 7) Upload the audio file
+        audio_file_ref = self.ai_provider.upload_audio_file(str(m4a_file_path))
+        if not audio_file_ref:
+            logger.warning("Audio file upload failed")
+            return
+
+        # 8) Generate multimodal summary
+        summary_response = self.ai_provider.generate_multimodal_content(
+            prompt=FEW_SHOT_SUMMARY_PROMPT,
+            audio_file_ref=audio_file_ref,
+        )
+
+        # 9) Post reply with summary
+        if summary_response and summary_response.text:
+            logger.info("Gemini Summary: %s", summary_response.text)
+            summary_tweet_id = await self.post_reply(summary_response.text, tweet_id)
+            logger.debug("Summary tweet ID: %s", summary_tweet_id)
+
+            # 10) Save conversation context
+            self.conversation_context[summary_tweet_id] = {
+                "summary": summary_response.text,
+                "audio_ref": audio_file_ref,
+            }
+        else:
+            logger.error("No summary returned from Gemini.")
 
     async def handle_followup(self, tweet: dict[str, Any]) -> None:
+        """
+        Handle follow-up mentions that reply to a summary tweet.
+
+        This method checks if the tweet is a reply to a previously summarized space,
+        retrieves the original context, and generates a response to the user's
+        follow-up question using only the audio content.
+
+        Args:
+            tweet (dict[str, Any]): The tweet object representing the follow-up.
+        """
         tweet_id = tweet.get("id_str", "")
+        followup_text = tweet.get("full_text", "")
+
+        # 1) Find the original summary tweet ID this is replying to
         in_reply_to_id = await self.get_replied_tweet_id(tweet_id)
 
         if not in_reply_to_id:
-            logger.debug(
-                "Tweet %s is not a reply to summary tweet; resuming.", tweet_id
-            )
+            logger.debug("Tweet %s is not a reply to any tweet; skipping.", tweet_id)
             return
 
-        logger.debug("Tweet %s replied to %s.", tweet_id, in_reply_to_id)
+        logger.debug("Tweet %s is replying to tweet %s.", tweet_id, in_reply_to_id)
+
+        context = self.conversation_context.get(in_reply_to_id)
+        # 2) Retrieve context from the original summary
         context = self.conversation_context.get(in_reply_to_id)
         if not context:
             logger.warning(
-                "No conversation summary tweet found for reply: %s", tweet_id
+                "No conversation context found for replied-to tweet: %s", in_reply_to_id
             )
             return
 
         # Build a follow-up prompt that includes the summary as context.
-        followup_question = tweet.get("full_text", "")
-        prompt = (
-            "You are ScribeChain, an AI social agent on X/Twitter with access "
-            "to the full content of a specific X Space audio file. "
-            "Your task is to answer the following follow-up question using "
-            "only the information contained in the referenced audio file. "
-            "Do not bring in any external context, opinions, or unrelated data."
-            " If the question calls for specific details (such as names, quotes,"
-            " or timestamps), include them only if they appear in the audio. "
-            "Your answer should be clear, concise, and directly address the "
-            "question based solely on the audio content provided.\n\n"
-            f"Audio File Reference: {context['audio_ref']}\n\n"
-            f"User's Follow-up Question: {followup_question}"
-        )
-        logger.info("Sending follow-up prompt: %s", prompt)
 
-        # Use send_message to generate a follow-up answer
-        response = self.ai_provider.send_message(prompt)
+        followup_prompt = FEW_SHOT_FOLLOWUP_PROMPT.format(
+            followup_text=followup_text.strip(),
+            audio_ref=context[
+                "audio_ref"
+            ],  # This will be passed into the model as a file
+        )
+
+        logger.info("Sending follow-up prompt for tweet %s", tweet_id)
+        logger.info("follow-up question is %s", followup_text)
+        logger.info("follow-up prompt is %s", followup_prompt)
+
+        # 4) Generate a response via the AI provider
+        response = self.ai_provider.generate_multimodal_content(
+            prompt=followup_prompt,
+            audio_file_ref=context["audio_ref"],
+        )
         if response and response.text:
             logger.info("Follow-up response: %s", response.text)
             await self.post_reply(response.text, tweet_id)
         else:
-            logger.error("No response returned for follow-up question.")
+            logger.error("No response returned for follow-up tweet: %s", tweet_id)
 
-    async def fetch_tweet_details(
-        self, tweet_id: str, session: aiohttp.ClientSession
-    ) -> dict[str, Any] | None:
-        # Only request the referenced_tweets field
-        fields = "referenced_tweets"
-        url = (
-            self.twitter_api_base
-            + f"/tweets/{tweet_id}?tweet.fields={fields}"
-            + "&expansions=referenced_tweets.id"
-        )
-        headers = self._get_twitter_api_headers("GET", url)
-        ssl_context = ssl.create_default_context(cafile=certifi.where())
-        try:
-            async with session.get(url, headers=headers, ssl=ssl_context) as response:
-                if response.status == HTTP_OK:
-                    return await response.json()
-                if response.status == HTTP_RATE_LIMIT:
-                    retry_after = response.headers.get("retry-after")
-                    wait_time = (
-                        int(retry_after) if retry_after else 900
-                    )  # default to 15 minutes
-                    self.rate_limit_reset_time = time.time() + wait_time
-                    logger.warning(
-                        "Rate limit exceeded when fetching tweet details"
-                        "for tweet: %s. Wait for %s seconds.",
-                        tweet_id,
-                        wait_time,
-                    )
-                    return None
-                logger.error("Failed to fetch tweet details", status=response.status)
-                return None
-        except Exception:
-            logger.exception("Error fetching tweet details")
-            return None
-
-    async def download_space_audio(self, space_url: str) -> None:
+    async def download_space_audio(self, space_url: str) -> None | str:
         """Download the audio from a completed X Space given its URL asynchronously."""
 
         if self.cookie_path is None:
             logger.error("Missing cookie path")
-            return
+            return None
 
         logger.info("Cookie Path Value: %s", self.cookie_path)
-        if os.path.exists(self.cookie_path):
+        if Path(self.cookie_path).exists():
             logger.info("Cookie file exists")
         else:
             logger.error("Cookie file does not exist at the specified path")
-            return
+            return None
 
         logger.info("Beginning X space download")
-        logger.info("PATH: %s", os.environ["PATH"])
+
+        output_filename = f"space_audio_{space_url}.m4a"
+        output_path = f"/audio_files/{output_filename}"
         cmd = [
             "/bin/sh",
             "-c",
@@ -701,9 +715,23 @@ class TwitterBot:
             )
             stdout, stderr = await process.communicate()
             if process.returncode == 0:
-                logger.info("Space audio downloaded successfully: %s", stdout.decode())
-            else:
-                logger.error("Error downloading space audio: %s", stderr.decode())
+                logger.info("Space audio downloaded successfully")
+                # Find most recent .m4a file
+                files = list(Path().glob("*.m4a"))
+                if not files:
+                    logger.error("No .m4a file found after download")
+                    return None
+
+                latest_file = max(files, key=os.path.getctime)
+
+                # Rename it to make it tweet-specific
+                safe_tweet_id = space_url.split("/")[-1]
+                output_path = Path(f"/audio_files/space_audio_{safe_tweet_id}.m4a")
+                latest_file.rename(output_path)
+
+                logger.info("Renamed downloaded file to: %s", output_path)
+                return str(output_path)
+            logger.error("Error downloading space audio: %s", stderr.decode())
         except Exception:
             logger.exception("Exception while downloading space audio.")
 

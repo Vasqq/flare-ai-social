@@ -8,7 +8,7 @@ from anyio import Event
 from google.api_core.exceptions import InvalidArgument, NotFound
 
 from flare_ai_social.ai import BaseAIProvider, GeminiProvider
-from flare_ai_social.prompts import ZERO_SHOT_PROMPT
+from flare_ai_social.prompts import FEW_SHOT_SUMMARY_PROMPT
 from flare_ai_social.settings import settings
 from flare_ai_social.telegram import TelegramBot
 from flare_ai_social.twitter import TwitterBot, TwitterConfig
@@ -51,7 +51,7 @@ class BotManager:
                     self.ai_provider = GeminiProvider(
                         settings.gemini_api_key,
                         model_name=f"tunedModels/{tuned_model_id}",
-                        system_instruction=ZERO_SHOT_PROMPT,
+                        system_instruction=FEW_SHOT_SUMMARY_PROMPT,
                     )
                     logger.info("Tuned model info", model_info=model_info)
                 except (InvalidArgument, NotFound):
@@ -72,7 +72,6 @@ class BotManager:
         self.ai_provider = GeminiProvider(
             settings.gemini_api_key,
             model_name="gemini-2.0-flash",
-            system_instruction=ZERO_SHOT_PROMPT,
         )
 
     def _check_ai_provider_initialized(self) -> BaseAIProvider:
