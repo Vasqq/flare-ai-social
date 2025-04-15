@@ -13,6 +13,7 @@ import certifi
 import structlog
 
 from flare_ai_social.ai import BaseAIProvider
+from flare_ai_social.prompts.templates import FEW_SHOT_FOLLOWUP_PROMPT, FEW_SHOT_SUMMARY_PROMPT
 from flare_ai_social.twitter import utils
 
 logger = structlog.get_logger(__name__)
@@ -588,11 +589,11 @@ class TwitterBot:
         
         logger.info("Extracted X Space URL: %s", space_url)
 
-        # 5) Download audio from X Space
-        await self.download_space_audio(space_url)
-
-        # 6) Locate the downloaded .m4a file in the current directory
-        m4a_file_path = next(Path().glob("*.m4a"), None)
+        # 5) Download audio from X Space and retrieve its location
+        m4a_file_path = await self.download_space_audio(space_url)
+        if not m4a_file_path:
+            logger.error("No .m4a file found after downloading space audio")
+            return
 
         if not m4a_file_path:
             logger.error("No .m4a file found after donwloading space audio")
@@ -600,6 +601,7 @@ class TwitterBot:
         
         logger.info("Using audio file: %s", m4a_file_path)
 
+        # 7) Upload the audio file
         audio_file_ref = self.ai_provider.upload_audio_file(str(m4a_file_path))
         if not audio_file_ref:
             logger.warning("Audio file upload failed")
@@ -607,7 +609,7 @@ class TwitterBot:
 
         # 8) Generate multimodal summary
         summary_response = self.ai_provider.generate_multimodal_content(
-            prompt="You will tell me what this audio clip is about",
+            prompt=FEW_SHOT_SUMMARY_PROMPT,
             audio_file_ref=audio_file_ref,
         )
 
@@ -656,32 +658,29 @@ class TwitterBot:
             return
 
         # Build a follow-up prompt that includes the summary as context.
-        followup_question = tweet.get("full_text", "")
-        prompt = (
-            "You are ScribeChain, an AI social agent on X/Twitter with access "
-            "to the full content of a specific X Space audio file. "
-            "Your task is to answer the following follow-up question using "
-            "only the information contained in the referenced audio file. "
-            "Do not bring in any external context, opinions, or unrelated data."
-            " If the question calls for specific details (such as names, quotes,"
-            " or timestamps), include them only if they appear in the audio. "
-            "Your answer should be clear, concise, and directly address the "
-            "question based solely on the audio content provided.\n\n"
-            f"Audio File Reference: {context['audio_ref']}\n\n"
-            f"User's Follow-up Question: {followup_text}"
+
+        followup_prompt = FEW_SHOT_FOLLOWUP_PROMPT.format(
+            followup_text=followup_text.strip(),
+            audio_ref=context['audio_ref'],  # This will be passed into the model as a file
         )
+
         
         logger.info("Sending follow-up prompt for tweet %s", tweet_id)
+        logger.info("follow-up question is %s", followup_text)
+        logger.info("follow-up prompt is %s", followup_prompt)
 
         # 4) Generate a response via the AI provider
-        response = self.ai_provider.send_message(prompt)
+        response = self.ai_provider.generate_multimodal_content(
+            prompt=followup_prompt,
+            audio_file_ref=context['audio_ref'],
+        )
         if response and response.text:
             logger.info("Follow-up response: %s", response.text)
             await self.post_reply(response.text, tweet_id)
         else:
             logger.error("No response returned for follow-up tweet: %s", tweet_id)
 
-    async def download_space_audio(self, space_url: str) -> None:
+    async def download_space_audio(self, space_url: str) -> None | str:
         """Download the audio from a completed X Space given its URL asynchronously."""
 
         if self.cookie_path is None:
@@ -697,6 +696,9 @@ class TwitterBot:
 
         logger.info("Beginning X space download")
         logger.info("PATH: %s", os.environ["PATH"])
+
+        output_filename = f"space_audio_{space_url}.m4a"
+        output_path = f"/tmp/{output_filename}"
         cmd = [
             "/bin/sh",
             "-c",
@@ -710,7 +712,22 @@ class TwitterBot:
             )
             stdout, stderr = await process.communicate()
             if process.returncode == 0:
-                logger.info("Space audio downloaded successfully: %s", stdout.decode())
+                logger.info("Space audio downloaded successfully")
+                # Find most recent .m4a file
+                files = list(Path().glob("*.m4a"))
+                if not files:
+                    logger.error("No .m4a file found after download")
+                    return None
+
+                latest_file = max(files, key=os.path.getctime)
+
+                # Rename it to make it tweet-specific
+                safe_tweet_id = space_url.split("/")[-1]
+                output_path = Path(f"/tmp/space_audio_{safe_tweet_id}.m4a")
+                latest_file.rename(output_path)
+
+                logger.info("Renamed downloaded file to: %s", output_path)
+                return str(output_path)
             else:
                 logger.error("Error downloading space audio: %s", stderr.decode())
         except Exception:
