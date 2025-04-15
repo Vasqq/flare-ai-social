@@ -8,7 +8,7 @@ from anyio import Event
 from google.api_core.exceptions import InvalidArgument, NotFound
 
 from flare_ai_social.ai import BaseAIProvider, GeminiProvider
-from flare_ai_social.prompts import ZERO_SHOT_PROMPT, FEW_SHOT_SUMMARY_PROMPT
+from flare_ai_social.prompts import FEW_SHOT_SUMMARY_PROMPT
 from flare_ai_social.settings import settings
 from flare_ai_social.telegram import TelegramBot
 from flare_ai_social.twitter import TwitterBot, TwitterConfig

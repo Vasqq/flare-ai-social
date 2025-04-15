@@ -5,7 +5,6 @@ from flare_ai_social.prompts import (
     CHAIN_OF_THOUGHT_PROMPT,
     FEW_SHOT_PROMPT,
     ZERO_SHOT_PROMPT,
-    FEW_SHOT_SUMMARY_PROMPT,
 )
 from flare_ai_social.settings import settings
 
