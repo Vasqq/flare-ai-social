@@ -727,6 +727,10 @@ class TwitterBot:
                 # Rename it to make it tweet-specific
                 safe_tweet_id = space_url.split("/")[-1]
                 output_path = Path(f"/audio_files/space_audio_{safe_tweet_id}.m4a")
+
+                # Ensure /audio_files exists
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+
                 latest_file.rename(output_path)
 
                 logger.info("Renamed downloaded file to: %s", output_path)
