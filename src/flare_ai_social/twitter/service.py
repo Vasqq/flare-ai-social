@@ -595,11 +595,7 @@ class TwitterBot:
             logger.error("No .m4a file found after downloading space audio")
             return
 
-        if not m4a_file_path:
-            logger.error("No .m4a file found after donwloading space audio")
-            return
-        
-        logger.info("Using audio file: %s", m4a_file_path)
+        logger.debug("Using audio file: %s", m4a_file_path)
 
         # 7) Upload the audio file
         audio_file_ref = self.ai_provider.upload_audio_file(str(m4a_file_path))
