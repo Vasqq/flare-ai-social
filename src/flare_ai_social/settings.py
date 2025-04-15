@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     twitter_accounts_to_monitor: str = "@ScribeChainFLR"
 
     # Twitter monitoring interval in seconds
-    twitter_polling_interval: int = 5
+    twitter_polling_interval: int = 15
 
     # Telegram Bot settings
     enable_telegram: bool = False  # Enable Telegram bot
