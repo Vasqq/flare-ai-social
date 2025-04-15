@@ -13,7 +13,10 @@ import certifi
 import structlog
 
 from flare_ai_social.ai import BaseAIProvider
-from flare_ai_social.prompts.templates import FEW_SHOT_FOLLOWUP_PROMPT, FEW_SHOT_SUMMARY_PROMPT
+from flare_ai_social.prompts.templates import (
+    FEW_SHOT_FOLLOWUP_PROMPT,
+    FEW_SHOT_SUMMARY_PROMPT,
+)
 from flare_ai_social.twitter import utils
 
 logger = structlog.get_logger(__name__)
@@ -91,7 +94,6 @@ class TwitterBot:
         self.twitter_api_base = "https://api.twitter.com/2"
         self.rapidapi_search_endpoint = f"https://{self.rapidapi_host}/search-v2"
         self.rapidapi_tweet_lookup_endpoint = f"https://{self.rapidapi_host}/tweet"
-
 
         logger.info(
             "TwitterBot initialized - monitoring mentions for accounts",
@@ -438,7 +440,9 @@ class TwitterBot:
                                                 "user_id_str", ""
                                             ),
                                             "entities": legacy_data.get("entities", {}),
-                                            "in_reply_to_status_id_str": legacy_data.get("in_reply_to_status_id_str", ""),
+                                            "in_reply_to_status_id_str": legacy_data.get(
+                                                "in_reply_to_status_id_str", ""
+                                            ),
                                             "user": {
                                                 "screen_name": user_data.get(
                                                     "screen_name", ""
@@ -495,7 +499,7 @@ class TwitterBot:
             new_mentions.append(tweet)
 
         return new_mentions
-            
+
     async def fetch_tweet_by_id(self, tweet_id: str) -> None:
         """
         Fetch a tweet object by its ID using the RapidAPI tweet lookup endpoint.
@@ -515,7 +519,9 @@ class TwitterBot:
                         tweet_data = await response.json()
                         tweet = tweet_data.get("tweet")
                         if not tweet:
-                            logger.warning("No tweet object found in response: %s", tweet_data)
+                            logger.warning(
+                                "No tweet object found in response: %s", tweet_data
+                            )
                             return None
                         return tweet
                     else:
@@ -531,7 +537,6 @@ class TwitterBot:
                 logger.exception("Exception during tweet fetch for ID: %s", tweet_id)
                 return None
 
-
     async def get_replied_tweet_id(self, tweet_id: str) -> None:
         """
         Returns the ID of the tweet this tweet is replying to, if any.
@@ -545,7 +550,6 @@ class TwitterBot:
 
         logger.info("No replied-to tweet ID found for tweet: %s", tweet_id)
         return None
-
 
     async def handle_mention(self, tweet: dict[str, Any]) -> None:
         """
@@ -565,7 +569,7 @@ class TwitterBot:
         if "summarize" not in tweet.get("full_text", "").lower():
             await self.handle_followup(tweet)
             return
-        
+
         logger.info("Trigger detected in tweet: %s", tweet_id)
 
         # 3) Identify parent tweet ID
@@ -573,20 +577,22 @@ class TwitterBot:
         if not parent_tweet_id:
             logger.error("Parent tweet is None for tweet: %s", tweet_id)
             return
-            
+
         logger.info("Parent tweet ID: %s", parent_tweet_id)
 
         parent_tweet = await self.fetch_tweet_by_id(parent_tweet_id)
         if not parent_tweet:
             logger.error("Failed to fetch parent tweet for ID: %s", parent_tweet_id)
             return
-            
+
         # 4) Extract X Space URL
-        space_url = parent_tweet.get("entities", {}).get("urls", [{}])[0].get("expanded_url")
+        space_url = (
+            parent_tweet.get("entities", {}).get("urls", [{}])[0].get("expanded_url")
+        )
         if not space_url:
             logger.warning("No X Space URL found in parent tweet: %s", tweet_id)
             return
-        
+
         logger.info("Extracted X Space URL: %s", space_url)
 
         # 5) Download audio from X Space and retrieve its location
@@ -650,17 +656,20 @@ class TwitterBot:
         # 2) Retrieve context from the original summary
         context = self.conversation_context.get(in_reply_to_id)
         if not context:
-            logger.warning("No conversation context found for replied-to tweet: %s", in_reply_to_id)
+            logger.warning(
+                "No conversation context found for replied-to tweet: %s", in_reply_to_id
+            )
             return
 
         # Build a follow-up prompt that includes the summary as context.
 
         followup_prompt = FEW_SHOT_FOLLOWUP_PROMPT.format(
             followup_text=followup_text.strip(),
-            audio_ref=context['audio_ref'],  # This will be passed into the model as a file
+            audio_ref=context[
+                "audio_ref"
+            ],  # This will be passed into the model as a file
         )
 
-        
         logger.info("Sending follow-up prompt for tweet %s", tweet_id)
         logger.info("follow-up question is %s", followup_text)
         logger.info("follow-up prompt is %s", followup_prompt)
@@ -668,7 +677,7 @@ class TwitterBot:
         # 4) Generate a response via the AI provider
         response = self.ai_provider.generate_multimodal_content(
             prompt=followup_prompt,
-            audio_file_ref=context['audio_ref'],
+            audio_file_ref=context["audio_ref"],
         )
         if response and response.text:
             logger.info("Follow-up response: %s", response.text)
