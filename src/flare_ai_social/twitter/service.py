@@ -439,8 +439,7 @@ class TwitterBot:
                                                 "user_id_str", ""
                                             ),
                                             "entities": legacy_data.get("entities", {}),
-                                            "in_reply_to_status_id_str":
-                                            legacy_data.get(
+                                            "in_reply_to_status_id_str": legacy_data.get(
                                                 "in_reply_to_status_id_str", ""
                                             ),
                                             "user": {
